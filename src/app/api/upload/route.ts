@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
-import db from '@/lib/db';
+import db from '../../../../lib/db';
 import { PoolConnection } from 'mysql2/promise';
 
 export const runtime = 'nodejs';
@@ -102,6 +102,22 @@ export async function POST(req: NextRequest) {
     const hasLabCreditCol = subCreditFields.has('labCredit');
     const hasCreditCol = subCreditFields.has('credit');
 
+    // ตรวจสอบคอลัมน์ใน subjectCourse เพื่อรองรับ studyYear และ term
+    const [subjectCourseCols]: any = await connection.query('SHOW COLUMNS FROM subjectCourse');
+    const subjectCourseFields = new Set((subjectCourseCols as any[]).map((c: any) => String(c.Field)));
+    const hasStudyYearCol = subjectCourseFields.has('studyYear');
+    const hasTermCol = subjectCourseFields.has('term');
+
+    // helper: ดึงค่าตัวเลขจากหลายชื่อคอลัมน์ที่เป็นไปได้
+    const getIntFromRow = (r: any, keys: string[]): number | null => {
+      for (const k of keys) {
+        if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') {
+          const n = parseInt(String(r[k]).trim(), 10);
+          if (!Number.isNaN(n)) return n;
+        }
+      }
+      return null;
+    };
     // --- วนลูปเพื่อตรวจสอบและเพิ่มข้อมูล ---
     for (let i = 0; i < results.length; i++) {
         const row = results[i];
@@ -175,10 +191,35 @@ export async function POST(req: NextRequest) {
             [newSubjectId, credit, lectureHours, labHours, selfHours]
         );
         
-        await connection.execute(
+        // เตรียม year/term (ถ้ามีทั้งใน Schema และ CSV)
+        const studyYear = hasStudyYearCol
+          ? getIntFromRow(row, ['ปีที่เรียน', 'ชั้นปี', 'ปี', 'studyYear'])
+          : null;
+        const term = hasTermCol
+          ? getIntFromRow(row, ['เทอมที่เรียน', 'ภาคการศึกษา', 'ภาคเรียน', 'เทอม', 'term'])
+          : null;
+
+        if (hasStudyYearCol && hasTermCol) {
+          await connection.execute(
+            `INSERT INTO subjectCourse (subjectId, coursePlanId, studyYear, term) VALUES (?, ?, ?, ?)`,
+            [newSubjectId, coursePlanId, studyYear, term]
+          );
+        } else if (hasStudyYearCol && !hasTermCol) {
+          await connection.execute(
+            `INSERT INTO subjectCourse (subjectId, coursePlanId, studyYear) VALUES (?, ?, ?)`,
+            [newSubjectId, coursePlanId, studyYear]
+          );
+        } else if (!hasStudyYearCol && hasTermCol) {
+          await connection.execute(
+            `INSERT INTO subjectCourse (subjectId, coursePlanId, term) VALUES (?, ?, ?)`,
+            [newSubjectId, coursePlanId, term]
+          );
+        } else {
+          await connection.execute(
             `INSERT INTO subjectCourse (subjectId, coursePlanId) VALUES (?, ?)`,
             [newSubjectId, coursePlanId]
-        );
+          );
+        }
     }
 
     await connection.commit();
