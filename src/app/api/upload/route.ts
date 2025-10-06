@@ -32,7 +32,6 @@ export async function POST(req: NextRequest) {
       });
     };
 
-    // Auto-detect delimiter: prefer comma then fallback to tab
     let results: any[] = await tryParse(',');
     if (results.length > 0 && Object.keys(results[0] || {}).length <= 1) {
       results = await tryParse('\t');
@@ -45,144 +44,97 @@ export async function POST(req: NextRequest) {
     connection = await db.getConnection();
     await connection.beginTransaction();
 
-    // --- เตรียมข้อมูลอ้างอิงจากฐานข้อมูลตามสคีมาใน DW-student-g5 (1).sql ---
-    // subjectType: 1 บรรยาย, 2 ปฎิบัติ, 3 บรรยาย + ปฎิบัติ (ตามไฟล์ SQL)
     await connection.execute(
       `INSERT IGNORE INTO subjectType (subjectTypeId, nameSubjectType) VALUES (1, 'บรรยาย'), (2, 'ปฎิบัติ'), (3, 'บรรยาย + ปฎิบัติ')`
     );
 
-    const courseName = results[0]['ชื่อหลักสูตร'];
-    let planName = results[0]['แผนการเรียน'];
-    if (!courseName) {
-      throw new Error("ไม่พบคอลัมน์ 'ชื่อหลักสูตร' หรือค่าเป็นค่าว่างในแถวแรกของไฟล์ CSV");
-    }
-    if (!planName) {
-      throw new Error("ไม่พบคอลัมน์ 'แผนการเรียน' หรือค่าเป็นค่าว่างในแถวแรกของไฟล์ CSV");
-    }
-    // Normalize plan keywords to match DB values
-    const normalizedPlan = (() => {
-      const p = String(planName);
-      if (p.includes('ไม่สหกิจ')) return 'แผนไม่สหกิจศึกษา';
-      if (p.includes('สหกิจ')) return 'แผนสหกิจศึกษา';
-      return p;
-    })();
-
-    // หา course จาก nameCourseTh
-    const [courseRows]: any = await connection.execute(
-      'SELECT courseId FROM course WHERE nameCourseTh = ? LIMIT 1',
-      [courseName]
-    );
-    if (!courseRows || courseRows.length === 0) {
-      throw new Error(`ไม่พบหลักสูตร (course.nameCourseTh) = '${courseName}' ในตาราง course`);
-    }
-    const courseId: number = courseRows[0].courseId;
-
-    // หา coursePlan จาก planCourse ของหลักสูตรนั้น
-    const [planRows]: any = await connection.execute(
-      'SELECT coursePlanId FROM coursePlan WHERE courseId = ? AND (planCourse = ? OR planCourse LIKE ?) LIMIT 1',
-      [courseId, normalizedPlan, `%${planName}%`]
-    );
-    if (!planRows || planRows.length === 0) {
-      throw new Error(`ไม่พบแผนการเรียนในฐานข้อมูล: '${planName}' (ลองใช้ '${normalizedPlan}')`);
-    }
-    const coursePlanId: number = planRows[0].coursePlanId;
-
-    // เตรียม Map ของ subjectCategory โดย match จาก subjectGroupName ตามที่ผู้ใช้ระบุ
-    const [categoryRows]: any = await connection.execute(
-      'SELECT subjectCategoryId, subjectCategoryName, subjectGroupName FROM subjectCategory'
-    );
-    const categoryByGroupName: Map<string, { id: number; name: string }> = new Map(
-      (categoryRows as any[]).map((r: any) => [String(r.subjectGroupName).trim(), { id: Number(r.subjectCategoryId), name: String(r.subjectCategoryName) }])
+    // ดึงข้อมูล lookup ทั้งหมดมาเตรียมไว้ใน Map
+    const [courseRows]: any = await connection.execute('SELECT courseId, nameCourseTh FROM course');
+    const courseMap: Map<string, number> = new Map(
+      (courseRows as any[]).map((r: any) => [String(r.nameCourseTh).trim(), Number(r.courseId)])
     );
 
-    // ตรวจสอบคอลัมน์ใน subCredit เพื่อรองรับการเอา lectureCredit/labCredit ออก
-    const [subCreditCols]: any = await connection.query('SHOW COLUMNS FROM subCredit');
-    const subCreditFields = new Set((subCreditCols as any[]).map((c: any) => String(c.Field)));
-    const hasLectureCreditCol = subCreditFields.has('lectureCredit');
-    const hasLabCreditCol = subCreditFields.has('labCredit');
-    const hasCreditCol = subCreditFields.has('credit');
+    const [planRows]: any = await connection.execute('SELECT coursePlanId, planCourse FROM coursePlan');
+    const coursePlanMap: Map<string, number> = new Map(
+      (planRows as any[]).map((r: any) => [String(r.planCourse).trim(), Number(r.coursePlanId)])
+    );
 
-    // ตรวจสอบคอลัมน์ใน subjectCourse เพื่อรองรับ studyYear และ term
-    const [subjectCourseCols]: any = await connection.query('SHOW COLUMNS FROM subjectCourse');
-    const subjectCourseFields = new Set((subjectCourseCols as any[]).map((c: any) => String(c.Field)));
-    const hasStudyYearCol = subjectCourseFields.has('studyYear');
-    const hasTermCol = subjectCourseFields.has('term');
+    const [categoryRows]: any = await connection.execute('SELECT subjectCategoryId, subjectGroupName FROM subjectCategory');
+    const categoryByGroupName: Map<string, number> = new Map(
+      (categoryRows as any[]).map((r: any) => [String(r.subjectGroupName).trim(), Number(r.subjectCategoryId)])
+    );
 
-    // helper: ดึงค่าตัวเลขจากหลายชื่อคอลัมน์ที่เป็นไปได้
-    const getIntFromRow = (r: any, keys: string[]): number | null => {
-      for (const k of keys) {
-        if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') {
-          const n = parseInt(String(r[k]).trim(), 10);
-          if (!Number.isNaN(n)) return n;
-        }
-      }
-      return null;
-    };
-    // --- วนลูปเพื่อตรวจสอบและเพิ่มข้อมูล ---
     for (let i = 0; i < results.length; i++) {
         const row = results[i];
-        const rowNumber = i + 2; // +2 เพราะ index เริ่มที่ 0 และมี header 1 แถว
+        const rowNumber = i + 2;
 
-        // **ส่วนของการตรวจสอบข้อมูล (Data Validation)**
-        const requiredFields = ['รหัสวิชา', 'ชื่อวิชา(ภาษาไทย)', 'ชื่อวิชา(ภาษาอังกฤษ)', 'จำนวนหน่วยกิต'];
+        const requiredFields = ['ชื่อหลักสูตร', 'แผนการเรียน', 'รหัสวิชา', 'ชื่อวิชา(ภาษาไทย)', 'จำนวนหน่วยกิต', 'ปีที่เรียน', 'เทอมที่เรียน'];
         for (const field of requiredFields) {
             if (!row[field]) {
                 throw new Error(`แถวที่ ${rowNumber}: ข้อมูลในคอลัมน์ '${field}' ว่างเปล่า`);
             }
         }
         
+        // ตรวจสอบ "ชื่อหลักสูตร" ในแต่ละแถว
+        const courseName = String(row['ชื่อหลักสูตร']).trim();
+        const courseId = courseMap.get(courseName);
+        if (!courseId) {
+            throw new Error(`แถวที่ ${rowNumber}: ไม่พบหลักสูตรชื่อ '${courseName}' `);
+        }
+        
+        // ตรวจสอบ "แผนการเรียน" ในแต่ละแถว (พร้อมแปลงชื่อ)
+        const planName = String(row['แผนการเรียน']).trim();
+        const normalizedPlan = (() => {
+            if (planName.includes('ไม่สหกิจ')) return 'แผนไม่สหกิจศึกษา';
+            if (planName.includes('สหกิจ')) return 'แผนสหกิจศึกษา';
+            return planName;
+        })();
+        const coursePlanId = coursePlanMap.get(normalizedPlan);
+        if (!coursePlanId) {
+            throw new Error(`แถวที่ ${rowNumber}: ไม่พบแผนการเรียนชื่อ '${normalizedPlan}' `);
+        }
+
+        // ตรวจสอบ "กลุ่มของวิชาตามหลักสูตร"
+        const categoryGroup = String(row['กลุ่มของวิชาตามหลักสูตร'] || '').trim();
+        const subjectCategoryId = categoryByGroupName.get(categoryGroup);
+        if (!subjectCategoryId) {
+            throw new Error(`แถวที่ ${rowNumber}: ไม่พบกลุ่มวิชาชื่อ '${categoryGroup}' `);
+        }
+
+        const subjectCode = String(row['รหัสวิชา'] || '').replace(/^'/, '');
+        if (!subjectCode) {
+            throw new Error(`แถวที่ ${rowNumber}: ข้อมูลในคอลัมน์ 'รหัสวิชา' ว่างเปล่า`);
+        }
+
         const credit = parseInt(row['จำนวนหน่วยกิต'], 10);
-        if (isNaN(credit)) {
-            throw new Error(`แถวที่ ${rowNumber}: 'จำนวนหน่วยกิต' (${row['จำนวนหน่วยกิต']}) ไม่ใช่ตัวเลขที่ถูกต้อง`);
+        const studyYear = parseInt(row['ปีที่เรียน'], 10);
+        const term = parseInt(row['เทอมที่เรียน'], 10);
+        
+        if (isNaN(credit) || isNaN(studyYear) || isNaN(term)) {
+            throw new Error(`แถวที่ ${rowNumber}: 'จำนวนหน่วยกิต', 'ปีที่เรียน', หรือ 'เทอมที่เรียน' ไม่ใช่ตัวเลขที่ถูกต้อง`);
         }
 
         const lectureHours = parseInt(row['ชั่วโมงบรรยาย'], 10);
-        if (isNaN(lectureHours)) {
-            throw new Error(`แถวที่ ${rowNumber}: 'ชั่วโมงบรรยาย' (${row['ชั่วโมงบรรยาย']}) ไม่ใช่ตัวเลขที่ถูกต้อง`);
-        }
-
         const labHours = parseInt(row['ชั่วโมงปฎิบัติ'], 10);
-        if (isNaN(labHours)) {
-            throw new Error(`แถวที่ ${rowNumber}: 'ชั่วโมงปฎิบัติ' (${row['ชั่วโมงปฎิบัติ']}) ไม่ใช่ตัวเลขที่ถูกต้อง`);
-        }
-
         const selfHours = parseInt(row['ชั่วโมงเรียนรู้ด้วยต้นเอง'], 10);
-        if (isNaN(selfHours)) {
-            throw new Error(`แถวที่ ${rowNumber}: 'ชั่วโมงเรียนรู้ด้วยต้นเอง' (${row['ชั่วโมงเรียนรู้ด้วยต้นเอง']}) ไม่ใช่ตัวเลขที่ถูกต้อง`);
-        }
 
-        const factValue = row['fact (ต้องเรียน :  0 , เลือกเรียนตัวไหนก็ได้ในหมวดเดียวกัน : 1)'];
-        if (factValue !== '0' && factValue !== '1') {
-            throw new Error(`แถวที่ ${rowNumber}: ค่าในคอลัมน์ 'fact' (${factValue}) ต้องเป็น 0 หรือ 1 เท่านั้น`);
+        if (isNaN(lectureHours) || isNaN(labHours) || isNaN(selfHours)) {
+            throw new Error(`แถวที่ ${rowNumber}: ข้อมูลชั่วโมงเรียนไม่ใช่ตัวเลขที่ถูกต้อง`);
         }
-
-        const categoryGroup = String(row['กลุ่มของวิชาตามหลักสูตร'] || '').trim();
-        const cat = categoryByGroupName.get(categoryGroup);
-        if (!cat) {
-            throw new Error(`แถวที่ ${rowNumber}: ไม่พบ subjectCategory.subjectGroupName = '${categoryGroup}'`);
-        }
-        const subjectCategoryId: number = cat.id;
-
-        // กำหนด subjectTypeId จากชั่วโมงบรรยาย/ปฎิบัติ (ตามสคีมา)
+        
         const subjectTypeId: number = lectureHours > 0 && labHours > 0 ? 3 : (labHours > 0 ? 2 : 1);
 
-        // --- ตรวจสอบซ้ำ: ถ้ามี subject ซ้ำ (ตาม subjectCode + courseId) ให้ข้าม ---
         const [dupRows]: any = await connection.execute(
           'SELECT subjectId FROM subject WHERE courseId = ? AND subjectCode = ? LIMIT 1',
-          [courseId, row['รหัสวิชา']]
+          [courseId, subjectCode]
         );
         if (dupRows && dupRows.length > 0) {
-          continue; // ข้ามรายการที่ซ้ำ
+          continue;
         }
 
-        // ไม่ต้องบันทึก lectureCredit/labCredit ตามคำขอ → ตั้งค่าเป็น 0
-        const lectureCredit = 0;
-        const labCredit = 0;
-
-        // --- เพิ่มข้อมูลลงฐานข้อมูล ---
         const [subjectResult]: any = await connection.execute(
             `INSERT INTO subject (courseId, subjectTypeId, subjectCategoryId, subjectCode, nameSubjectThai, nameSubjectEng, credit) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [courseId, subjectTypeId, subjectCategoryId, row['รหัสวิชา'], row['ชื่อวิชา(ภาษาไทย)'], row['ชื่อวิชา(ภาษาอังกฤษ)'], credit]
+            [courseId, subjectTypeId, subjectCategoryId, subjectCode, row['ชื่อวิชา(ภาษาไทย)'], row['ชื่อวิชา(ภาษาอังกฤษ)'], credit]
         );
         const newSubjectId = subjectResult.insertId;
 
@@ -191,35 +143,10 @@ export async function POST(req: NextRequest) {
             [newSubjectId, credit, lectureHours, labHours, selfHours]
         );
         
-        // เตรียม year/term (ถ้ามีทั้งใน Schema และ CSV)
-        const studyYear = hasStudyYearCol
-          ? getIntFromRow(row, ['ปีที่เรียน', 'ชั้นปี', 'ปี', 'studyYear'])
-          : null;
-        const term = hasTermCol
-          ? getIntFromRow(row, ['เทอมที่เรียน', 'ภาคการศึกษา', 'ภาคเรียน', 'เทอม', 'term'])
-          : null;
-
-        if (hasStudyYearCol && hasTermCol) {
-          await connection.execute(
+        await connection.execute(
             `INSERT INTO subjectCourse (subjectId, coursePlanId, studyYear, term) VALUES (?, ?, ?, ?)`,
-            [newSubjectId, coursePlanId, studyYear, term]
-          );
-        } else if (hasStudyYearCol && !hasTermCol) {
-          await connection.execute(
-            `INSERT INTO subjectCourse (subjectId, coursePlanId, studyYear) VALUES (?, ?, ?)`,
-            [newSubjectId, coursePlanId, studyYear]
-          );
-        } else if (!hasStudyYearCol && hasTermCol) {
-          await connection.execute(
-            `INSERT INTO subjectCourse (subjectId, coursePlanId, term) VALUES (?, ?, ?)`,
-            [newSubjectId, coursePlanId, term]
-          );
-        } else {
-          await connection.execute(
-            `INSERT INTO subjectCourse (subjectId, coursePlanId) VALUES (?, ?)`,
-            [newSubjectId, coursePlanId]
-          );
-        }
+            [newSubjectId, coursePlanId ,studyYear ,term]
+        );
     }
 
     await connection.commit();
@@ -231,7 +158,6 @@ export async function POST(req: NextRequest) {
       await connection.rollback();
     }
     console.error("Upload Error:", error);
-    // ตอบกลับด้วย status 400 (Bad Request) ซึ่งเหมาะสมสำหรับข้อผิดพลาดที่มาจากข้อมูลที่ผู้ใช้ส่งมา
     return NextResponse.json({ message: error.message }, { status: 400 });
   } finally {
     if (connection) {
