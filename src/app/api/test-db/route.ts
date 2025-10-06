@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db'; // Import connection pool ที่เราสร้างไว้
+import db from '../../../../../lib/DB';
 
 export async function GET() {
   try {
