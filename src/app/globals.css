@@ -1,9 +1,3 @@
-@font-face {
-  font-family: "Kanit";
-  src: url("/fonts/Kanit-Regular.ttf");
-  font-weight: 400;
-}
-
 html {
   scroll-behavior: smooth;
   margin: 0;

@@ -100,51 +100,25 @@ export default function PersonnelAdminLayout({
                 style: { fontSize: 16, color: "#FDFEFE" },
                 label: "หน้าหลัก",
                 onClick: () => {
-                  router.push(`/private`);
+                  router.push(`/`);
                 },
               },
               {
-                key: "user",
-                icon: <Icons.Users />,
+                key: "upload",
+                icon: <Icons.Upload />,
                 style: { fontSize: 16, color: "#FDFEFE" },
-                label: "ผู้ใช้งาน",
-                children: [
-                  {
-                    key: "all",
-                    icon: <Icons.UserRoundCog />,
-                    style: { fontSize: 16, color: "#FDFEFE" },
-                    label: "ผู้ใช้งานทั้งหมด",
-                    onClick: () => {
-                      router.push(`/private/user`);
-                    },
-                  },
-                  {
-                    key: "pendingApprovalUser",
-                    icon: <Icons.UserCog />,
-                    style: { fontSize: 16, color: "#FDFEFE" },
-                    label: "ผู้ใช้งานรออนุมัติ",
-                    onClick: () => {
-                      router.push(`/private/user/pendingApprovalUser`);
-                    },
-                  },
-                ],
-              },
-              {
-                key: "system",
-                icon: <Icons.LaptopMinimalCheck />,
-                style: { fontSize: 16, color: "#FDFEFE" },
-                label: "ระบบในองค์กร",
+                label: "อัปโหลดวิชา",
                 onClick: () => {
-                  router.push(`/private/system`);
+                  router.push(`/pageUpload`);
                 },
               },
               {
-                key: "setting",
-                icon: <Icons.Settings />,
+                key: "preSubject",
+                icon: <Icons.GitBranch />,
                 style: { fontSize: 16, color: "#FDFEFE" },
-                label: "ตั้งค่า",
+                label: "เชื่อมวิชาที่เกี่ยวข้อง",
                 onClick: () => {
-                  router.push(`/private/setting`);
+                  router.push(`/pre-subject`);
                 },
               },
             ]}
