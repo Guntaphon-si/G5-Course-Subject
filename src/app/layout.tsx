@@ -121,6 +121,15 @@ export default function PersonnelAdminLayout({
                   router.push(`/pre-subject`);
                 },
               },
+              {
+                key: "courses",
+                icon: <Icons.Book />,
+                style: { fontSize: 16, color: "#FDFEFE" },
+                label: "หลักสูตร",
+                onClick: () => {
+                  router.push(`/courses`);
+                },
+              },
             ]}
           />
         </Sider>
