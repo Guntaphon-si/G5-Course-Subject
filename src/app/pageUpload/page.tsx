@@ -87,11 +87,7 @@ export default function HomePage() {
             <Paragraph style={{ marginTop: 12 }}>{message}</Paragraph>
           )}
 
-          <div style={{ marginTop: 16 }}>
-            <Link href="/pre-subject">
-              <Button icon={<LinkOutlined />}>ไปหน้าจับเชื่อมรายวิชาที่เกี่ยวข้อง (preSubject)</Button>
-            </Link>
-          </div>
+
         </Card>
       </Space>
     </div>
