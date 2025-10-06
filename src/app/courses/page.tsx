@@ -134,10 +134,17 @@ const App: React.FC = () => {
         setLoading(true);
         const response = await fetch('/api/course'); // เรียก Endpoint เดิม
         const data = await response.json();
-        setDataSource(data);
+        // ป้องกันกรณี API ส่ง object/error แทน array
+        if (Array.isArray(data)) {
+          setDataSource(data);
+        } else {
+          console.warn('Unexpected /api/course payload:', data);
+          setDataSource([]);
+        }
         console.log(data);
       } catch (error) {
         console.error("Failed to fetch courses:", error);
+        setDataSource([]);
       } finally {
         setLoading(false);
       }
@@ -147,7 +154,9 @@ const App: React.FC = () => {
   }, []);
   return (
     <Flex vertical gap="small">
-    
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button type="primary" onClick={() => router.push('/courses/new')}>+ สร้างหลักสูตร</Button>
+      </div>
       <Table<CourseDataType>
         className={styles.customTable}
         columns={fixedColumns}
