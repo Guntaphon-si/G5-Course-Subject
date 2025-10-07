@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
 
         const lectureHours = parseInt(row['ชั่วโมงบรรยาย'], 10);
         const labHours = parseInt(row['ชั่วโมงปฎิบัติ'], 10);
-        const selfHours = parseInt(row['ชั่วโมงเรียนรู้ด้วยต้นเอง'], 10);
+        const selfHours = parseInt(row['ชั่วโมงเรียนรู้ด้วยตนเอง'], 10);
 
         if (isNaN(lectureHours) || isNaN(labHours) || isNaN(selfHours)) throw new Error(`แถวที่ ${rowNumber}: ข้อมูลชั่วโมงเรียนไม่ใช่ตัวเลขที่ถูกต้อง`);
         
