@@ -155,7 +155,8 @@ const App: React.FC = () => {
   return (
     <Flex vertical gap="small">
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button type="primary" onClick={() => router.push('/courses/new')}>+ สร้างหลักสูตร</Button>
+        <Button type="primary" onClick={() => router.push('/courses/new/')}>+ สร้างหลักสูตร</Button>
+        <Button type="primary" onClick={() => router.push('/courses/new/addCoursePlan')}>+ สร้างแผนการเรียน</Button>
       </div>
       <Table<CourseDataType>
         className={styles.customTable}
