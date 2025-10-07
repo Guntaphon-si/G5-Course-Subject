@@ -51,89 +51,98 @@ export default function PersonnelAdminLayout({
     <html>
       <body>
            <Layout style={{ minHeight: "100vh" }}>
-      <Layout>
-        <Sider
-          width="300px"
-          style={{
-            padding: "10px",
-            overflow: "auto",
-            height: "100vh",
-            position: "sticky",
-            insetInlineStart: 0,
-            top: 0,
-            bottom: 0,
-            scrollbarWidth: "thin",
-            scrollbarGutter: "stable",
-          }}>
-          <div style={{ marginBottom: "10px", marginTop: 10 }}>
-            <Row>
-              <Col
-                span={7}
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}>
-                <Icons.MonitorCog width={70} height={70} color="#ffffff"
-                style={{ marginRight: 10}} />
-              </Col>
-              <Col span={17}>
-                <Title
-                  style={{ marginBottom: 0, marginTop: 10, color: "#FDFEFE" }}
-                  level={4}>
-                  {"ระบบจัดการหลักสูตร&รายวิชา"}
-                </Title>
-                <Title style={{ marginTop: 0, color: "#FDFEFE" }} level={5}>
-                  {"ภายในองค์กร"}
-                </Title>
-              </Col>
-            </Row>
-          </div>
-          <Menu
-            theme="dark"
-            defaultSelectedKeys={["home"]}
-            mode="inline"
-            items={[
-              {
-                key: "home",
-                icon: <Icons.House />,
-                style: { fontSize: 16, color: "#FDFEFE" },
-                label: "หน้าหลัก",
-                onClick: () => {
-                  router.push(`/`);
-                },
-              },
-              {
-                key: "upload",
-                icon: <Icons.Upload />,
-                style: { fontSize: 16, color: "#FDFEFE" },
-                label: "อัปโหลดวิชา",
-                onClick: () => {
-                  router.push(`/pageUpload`);
-                },
-              },
-              {
-                key: "preSubject",
-                icon: <Icons.GitBranch />,
-                style: { fontSize: 16, color: "#FDFEFE" },
-                label: "เชื่อมวิชาที่เกี่ยวข้อง",
-                onClick: () => {
-                  router.push(`/pre-subject`);
-                },
-              },
-              {
-                key: "courses",
-                icon: <Icons.Book />,
-                style: { fontSize: 16, color: "#FDFEFE" },
-                label: "หลักสูตร",
-                onClick: () => {
-                  router.push(`/courses`);
-                },
-              },
-            ]}
-          />
-        </Sider>
         <Layout>
+          <Sider
+            width="300px"
+            style={{
+              padding: "10px",
+              overflow: "auto",
+              height: "100vh",
+              position: "sticky",
+              insetInlineStart: 0,
+              top: 0,
+              bottom: 0,
+              scrollbarWidth: "thin",
+              scrollbarGutter: "stable",
+            }}>
+            <div style={{ marginBottom: "10px", marginTop: 10 }}>
+              <Row>
+                <Col
+                  span={7}
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}>
+                  <Icons.MonitorCog width={70} height={70} color="#ffffff"
+                  style={{ marginRight: 10}} />
+                </Col>
+                <Col span={17}>
+                  <Title
+                    style={{ marginBottom: 0, marginTop: 10, color: "#FDFEFE" }}
+                    level={4}>
+                    {"ระบบจัดการหลักสูตร&รายวิชา"}
+                  </Title>
+                  <Title style={{ marginTop: 0, color: "#FDFEFE" }} level={5}>
+                    {"ภายในองค์กร"}
+                  </Title>
+                </Col>
+              </Row>
+            </div>
+            <Menu
+              theme="dark"
+              defaultSelectedKeys={["home"]}
+              mode="inline"
+              items={[
+                {
+                  key: "home",
+                  icon: <Icons.House />,
+                  style: { fontSize: 16, color: "#FDFEFE" },
+                  label: "หน้าหลัก",
+                  onClick: () => {
+                    router.push(`/`);
+                  },
+                },
+                {
+                  key: "upload",
+                  icon: <Icons.Upload />,
+                  style: { fontSize: 16, color: "#FDFEFE" },
+                  label: "อัปโหลดวิชา",
+                  onClick: () => {
+                    router.push(`/pageUpload`);
+                  },
+                },
+                {
+                  key: "subject",
+                  icon: <Icons.BookOpen />,
+                  style: { fontSize: 16, color: "#FDFEFE" },
+                  label: "จัดการรายวิชา",
+                  onClick: () => {
+                    router.push(`/subject`);
+                  },
+                },
+                {
+                  key: "preSubject",
+                  icon: <Icons.GitBranch />,
+                  style: { fontSize: 16, color: "#FDFEFE" },
+                  label: "เชื่อมวิชาที่เกี่ยวข้อง",
+                  onClick: () => {
+                    router.push(`/pre-subject`);
+                  },
+                },
+                {
+                  key: "courses",
+                  icon: <Icons.Book />,
+                  style: { fontSize: 16, color: "#FDFEFE" },
+                  label: "หลักสูตร",
+                  onClick: () => {
+                    router.push(`/courses`);
+                  },
+                },
+              ]}
+            />
+          </Sider>
+          <Layout>
           <Header
             style={{
               textAlign: "right",
