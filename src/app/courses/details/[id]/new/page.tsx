@@ -126,7 +126,7 @@ const AddSubjectCourse: React.FC = () => {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || "เกิดข้อผิดพลาด");
-            router.push("/courses");
+            router.push(`/courses/details/${coursePlanId}`);
             
         } catch (error) {
             console.error("Error simulating API call:", error);
