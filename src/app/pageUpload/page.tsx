@@ -80,8 +80,31 @@ export default function HomePage() {
                   </Upload.Dragger>
                   <Paragraph style={{ marginTop: 8 }}>
                     <Text type="secondary">
-                      กรุณาใช้รูปแบบไฟล์ตามเทมเพลต เช่น <Text code>course_cpe_60_not_int.csv</Text>
-                    </Text>
+  กรุณาใช้รูปแบบไฟล์ตามเทมเพลต เช่น <Text code>course_cpe_60_not_int.csv</Text>
+</Text>
+
+<Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+  โดยในไฟล์ควรประกอบไปด้วยหัวข้อต่อไปนี้:
+</Text>
+
+<div style={{ marginTop: 10 }}>
+  <Text code>
+    {`ชื่อหลักสูตร,
+แผนการเรียน,
+ปีที่เรียน,
+เทอมที่เรียน,
+รหัสวิชา,
+ชื่อวิชา(ภาษาไทย),
+ชื่อวิชา(ภาษาอังกฤษ),
+จำนวนหน่วยกิต,
+ชั่วโมงบรรยาย,
+ชั่วโมงปฏิบัติ,
+ชั่วโมงเรียนรู้ด้วยตนเอง,
+กลุ่มของวิชาตามหลักสูตร,
+บังคับหรือไม่บังคับ (ต้องเรียน: 0, เลือกเรียนตัวไหนก็ได้ในหมวดเดียวกัน: 1)`}
+  </Text>
+</div>
+
                   </Paragraph>
                 </Form.Item>
                 <Form.Item>

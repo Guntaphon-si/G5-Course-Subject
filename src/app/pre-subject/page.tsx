@@ -35,6 +35,8 @@ export default function PreSubjectPage() {
   const [options2, setOptions2] = useState<SubjectItem[]>([]);
   const [selected1, setSelected1] = useState<number | null>(null);
   const [selected2, setSelected2] = useState<number | null>(null);
+  const [selected1Label, setSelected1Label] = useState<string>('');
+  const [selected2Label, setSelected2Label] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -81,6 +83,8 @@ export default function PreSubjectPage() {
     setOptions2([]);
     setSelected1(null);
     setSelected2(null);
+    setSelected1Label('');
+    setSelected2Label('');
   }, []);
 
   const toOptions = (items: SubjectItem[]) =>
@@ -107,8 +111,11 @@ export default function PreSubjectPage() {
                     options={toOptions(options1)}
                     value={q1}
                     onChange={(v) => setQ1(v)}
-                    onSelect={(val) => {
+                    onSelect={(val, option) => {
                       setSelected1(Number(val));
+                      const label = typeof option?.label === 'string' ? option.label : String(option?.label ?? '');
+                      setSelected1Label(label);
+                      setQ1(label);
                     }}
                     placeholder="ค้นหาด้วยรหัส/ชื่อวิชา"
                     style={{ width: '100%' }}
@@ -125,8 +132,11 @@ export default function PreSubjectPage() {
                     options={toOptions(options2)}
                     value={q2}
                     onChange={(v) => setQ2(v)}
-                    onSelect={(val) => {
+                    onSelect={(val, option) => {
                       setSelected2(Number(val));
+                      const label = typeof option?.label === 'string' ? option.label : String(option?.label ?? '');
+                      setSelected2Label(label);
+                      setQ2(label);
                     }}
                     placeholder="ค้นหาด้วยรหัส/ชื่อวิชา"
                     style={{ width: '100%' }}
@@ -140,8 +150,12 @@ export default function PreSubjectPage() {
           <Row justify="space-between" align="middle">
             <Col>
               <Space>
-                <Tag color={selected1 ? 'blue' : 'default'}>{selected1 ? `เลือก subjectId: ${selected1}` : 'ยังไม่ได้เลือกรายวิชาหลัก'}</Tag>
-                <Tag color={selected2 ? 'blue' : 'default'}>{selected2 ? `เลือก previousSubjectId: ${selected2}` : 'ยังไม่ได้เลือกวิชาที่ต้องเรียนก่อน'}</Tag>
+                <Tag color={selected1 ? 'blue' : 'default'}>
+                  {selected1 ? `${selected1Label || `subjectId: ${selected1}`}` : 'ยังไม่ได้เลือกรายวิชาหลัก'}
+                </Tag>
+                <Tag color={selected2 ? 'blue' : 'default'}>
+                  {selected2 ? `${selected2Label || `previousSubjectId: ${selected2}`}` : 'ยังไม่ได้เลือกวิชาที่ต้องเรียนก่อน'}
+                </Tag>
               </Space>
             </Col>
             <Col>
