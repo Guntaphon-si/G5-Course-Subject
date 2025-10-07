@@ -22,11 +22,18 @@ export async function POST(req: NextRequest) {
 
     const tryParse = (delim: string): Promise<any[]> => {
       return new Promise((resolve, reject) => {
-        const data: any[] = [];
+        let data: any[] = [];
         Readable.from(buffer)
           .pipe(csv({ separator: delim, mapHeaders: ({ header }) => header?.replace(/^\uFEFF/, '').trim(), mapValues: ({ value }) => (typeof value === 'string' ? value.trim() : value) }))
           .on('data', (row) => data.push(row))
-          .on('end', () => resolve(data))
+          .on('end', () => {
+            // --- จุดที่แก้ไข ---
+            // กรองแถวที่ทุกคอลัมน์เป็นค่าว่างออกไปก่อนส่งผลลัพธ์
+            const filteredData = data.filter(row => 
+                !Object.values(row).every(val => val === null || val === '')
+            );
+            resolve(filteredData);
+          })
           .on('error', (error) => reject(error));
       });
     };
@@ -47,13 +54,11 @@ export async function POST(req: NextRequest) {
       `INSERT IGNORE INTO subjectType (subjectTypeId, nameSubjectType) VALUES (1, 'บรรยาย'), (2, 'ปฎิบัติ'), (3, 'บรรยาย + ปฎิบัติ')`
     );
 
-    // --- ส่วนที่แก้ไข 1: ดึงข้อมูลวิชาที่มีอยู่ทั้งหมดมาเตรียมไว้ ---
     const [existingSubjects]: any = await connection.execute('SELECT subjectId, subjectCode FROM subject');
     const subjectMap: Map<string, number> = new Map(
       (existingSubjects as any[]).map((s: any) => [String(s.subjectCode).trim(), Number(s.subjectId)])
     );
 
-    // ดึงข้อมูล lookup อื่นๆ
     const [courseRows]: any = await connection.execute('SELECT courseId, nameCourseTh FROM course');
     const courseMap: Map<string, number> = new Map(
       (courseRows as any[]).map((r: any) => [String(r.nameCourseTh).trim(), Number(r.courseId)])
@@ -73,6 +78,7 @@ export async function POST(req: NextRequest) {
         const row = results[i];
         const rowNumber = i + 2;
 
+        // กลับมาใช้ requiredFields แบบเดิมที่เข้มงวด
         const requiredFields = ['ชื่อหลักสูตร', 'แผนการเรียน', 'รหัสวิชา', 'ชื่อวิชา(ภาษาไทย)', 'จำนวนหน่วยกิต', 'ปีที่เรียน', 'เทอมที่เรียน'];
         for (const field of requiredFields) {
             if (!row[field]) throw new Error(`แถวที่ ${rowNumber}: ข้อมูลในคอลัมน์ '${field}' ว่างเปล่า`);
@@ -114,12 +120,9 @@ export async function POST(req: NextRequest) {
         
         let subjectId: number;
 
-        // --- ส่วนที่แก้ไข 2: ตรวจสอบว่ามีวิชานี้ในระบบแล้วหรือยัง ---
         if (subjectMap.has(subjectCode)) {
-            // ถ้ามีอยู่แล้ว ใช้ ID เดิม
             subjectId = subjectMap.get(subjectCode)!;
         } else {
-            // ถ้ายังไม่มี ให้สร้างวิชาใหม่
             const [subjectResult]: any = await connection.execute(
                 `INSERT INTO subject (courseId, subjectTypeId, subjectCategoryId, subjectCode, nameSubjectThai, nameSubjectEng, credit) VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [courseId, subjectTypeId, subjectCategoryId, subjectCode, row['ชื่อวิชา(ภาษาไทย)'], row['ชื่อวิชา(ภาษาอังกฤษ)'], credit]
@@ -131,19 +134,15 @@ export async function POST(req: NextRequest) {
                 [subjectId, credit, lectureHours, labHours, selfHours]
             );
             
-            // เพิ่มวิชาใหม่ลงใน Map เพื่อให้การวนลูปครั้งถัดไปหาเจอ (กรณีมีวิชาใหม่ซ้ำกันในไฟล์เดียว)
             subjectMap.set(subjectCode, subjectId);
         }
 
-        // --- ส่วนที่แก้ไข 3: เพิ่มความสัมพันธ์ใน subjectCourse (หลังจากได้ subjectId มาแล้ว) ---
-        // ตรวจสอบก่อนว่าความสัมพันธ์นี้มีอยู่แล้วหรือยัง เพื่อป้องกันการเพิ่มซ้ำซ้อน
         const [existingLink]: any = await connection.execute(
             'SELECT subjectCourseId FROM subjectCourse WHERE subjectId = ? AND coursePlanId = ?',
             [subjectId, coursePlanId]
         );
 
         if (existingLink.length === 0) {
-            // ถ้ายังไม่มีความสัมพันธ์นี้ ให้สร้างขึ้นมาใหม่
             await connection.execute(
                 `INSERT INTO subjectCourse (subjectId, coursePlanId, studyYear, term) VALUES (?, ?, ?, ?)`,
                 [subjectId, coursePlanId, studyYear, term]
