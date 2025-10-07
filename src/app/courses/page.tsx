@@ -57,7 +57,7 @@ const App: React.FC = () => {
   const router = useRouter();
   const handleViewDetails = (id: number) => {
     // ไปที่หน้า details/ตาม id ที่ส่งมา
-    router.push(`/courses/${id}`);
+    router.push(`/courses/details/${id}`);
   };
 
   const handleDelete = (id: number) => {
