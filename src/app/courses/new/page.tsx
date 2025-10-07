@@ -33,16 +33,21 @@ export default function AddCoursePage() {
       <Space direction="vertical" style={{ width: "100%" }} size={10}>
         <Row>
           <Col span={12}>
-            <Title style={{ marginTop: 0, marginBottom: 0, fontSize: 18 }}>สร้างหลักสูตรใหม่</Title>
+            <Title style={{ marginTop: 0, marginBottom: 0, fontSize: 18 }}>
+              สร้างหลักสูตรใหม่
+            </Title>
           </Col>
         </Row>
         <Card className="chemds-container">
           <Form layout="vertical" form={form} onFinish={onFinish}>
-            {/* COURSE */}
-            <Title level={5}>ข้อมูลหลักสูตร (ตาราง course)</Title>
+            <Title level={5}>ข้อมูลหลักสูตร</Title>
             <Row gutter={12}>
               <Col span={12}>
-                <Form.Item label="ชื่อหลักสูตร (ไทย)" name="nameCourseTh" rules={[{ required: true, message: "กรอกชื่อหลักสูตร (ไทย)" }]}>
+                <Form.Item 
+                  label="ชื่อหลักสูตร (ไทย)" 
+                  name="nameCourseTh" 
+                  rules={[{ required: true, message: "กรอกชื่อหลักสูตร (ไทย)" }]}
+                >
                   <Input placeholder="วศ.คอม 60" />
                 </Form.Item>
               </Col>
@@ -53,34 +58,36 @@ export default function AddCoursePage() {
               </Col>
               <Col span={12}>
                 <Form.Item label="ชื่อหลักสูตร (อังกฤษ)" name="nameCourseEng">
-                  <Input />
+                  <Input placeholder="B.Eng. Computer Engineering" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="ชื่อเต็มปริญญา (ไทย)" name="nameFullDegreeTh">
-                  <Input />
+                  <Input placeholder="วิศวกรรมศาสตรบัณฑิต" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="ชื่อเต็มปริญญา (อังกฤษ)" name="nameFullDegreeEng">
-                  <Input />
+                  <Input placeholder="Bachelor of Engineering" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="ชื่อย่อปริญญา (ไทย)" name="nameInitialsDegreeTh">
-                  <Input />
+                  <Input placeholder="วศ.บ." />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="ชื่อย่อปริญญา (อังกฤษ)" name="nameInitialsDegreeEng">
-                  <Input />
+                  <Input placeholder="B.Eng." />
                 </Form.Item>
               </Col>
             </Row>
 
-            <Space>
+            <Space style={{ marginTop: 16 }}>
               <Button onClick={() => router.push("/courses")}>ยกเลิก</Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>บันทึก</Button>
+              <Button type="primary" htmlType="submit" loading={submitting}>
+                บันทึก
+              </Button>
             </Space>
           </Form>
         </Card>

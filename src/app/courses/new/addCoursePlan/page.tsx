@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, Col, Form, Input, InputNumber, Row, Select, Space, Typography, message } from "antd";
 import { useRouter } from "next/navigation";
 
@@ -9,9 +9,10 @@ export default function AddCoursePlanPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // ดึงข้อมูลหลักสูตรทั้งหมด
-  useState(() => {
+  useEffect(() => {
     fetch("/api/course")
       .then(res => res.json())
       .then(data => {
@@ -19,8 +20,9 @@ export default function AddCoursePlanPage() {
           setCourses(data);
         }
       })
-      .catch(err => console.error(err));
-  });
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
+  }, []);
 
   const onFinish = async (values: any) => {
     setSubmitting(true);
@@ -46,7 +48,9 @@ export default function AddCoursePlanPage() {
       <Space direction="vertical" style={{ width: "100%" }} size={10}>
         <Row>
           <Col span={12}>
-            <Title style={{ marginTop: 0, marginBottom: 0, fontSize: 18 }}>สร้างแผนการเรียนใหม่</Title>
+            <Title style={{ marginTop: 0, marginBottom: 0, fontSize: 18 }}>
+              สร้างแผนการเรียนใหม่
+            </Title>
           </Col>
         </Row>
         <Card className="chemds-container">
@@ -55,8 +59,17 @@ export default function AddCoursePlanPage() {
             <Title level={5}>เลือกหลักสูตร</Title>
             <Row gutter={12}>
               <Col span={12}>
-                <Form.Item label="หลักสูตร" name="courseId" rules={[{ required: true, message: "กรุณาเลือกหลักสูตร" }]}>
-                  <Select placeholder="เลือกหลักสูตร" showSearch optionFilterProp="children">
+                <Form.Item 
+                  label="หลักสูตร" 
+                  name="courseId" 
+                  rules={[{ required: true, message: "กรุณาเลือกหลักสูตร" }]}
+                >
+                  <Select 
+                    placeholder="เลือกหลักสูตร" 
+                    showSearch 
+                    optionFilterProp="children"
+                    loading={loading}
+                  >
                     {courses.map((course) => (
                       <Select.Option key={course.courseId} value={course.courseId}>
                         {course.nameCourseTh}
@@ -68,94 +81,103 @@ export default function AddCoursePlanPage() {
             </Row>
 
             {/* COURSE PLAN */}
-            <Title level={5} style={{ marginTop: 12 }}>ข้อมูลแผนการเรียน (ตาราง coursePlan)</Title>
+            <Title level={5} style={{ marginTop: 24 }}>
+              ข้อมูลแผนการเรียน
+            </Title>
             <Row gutter={12}>
               <Col span={12}>
-                <Form.Item label="แผนการเรียน" name="planCourse" rules={[{ required: true, message: "กรอกแผนการเรียน" }]}>
+                <Form.Item 
+                  label="แผนการเรียน" 
+                  name="planCourse" 
+                  rules={[{ required: true, message: "กรอกแผนการเรียน" }]}
+                >
                   <Input placeholder="แผนสหกิจศึกษา / แผนไม่สหกิจศึกษา" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="ชั่วโมงฝึกงาน" name="internshipHours" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="หน่วยกิตฝึกงาน" name="creditIntern" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="หน่วยกิตรวม" name="totalCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
-
               <Col span={12}>
                 <Form.Item label="หมวดศึกษาทั่วไป" name="generalSubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="หมวดวิชาเฉพาะ" name="specificSubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="หมวดเลือกเสรี" name="freeSubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
             </Row>
 
-            {/* CREDIT REQUIRE - ตาราง creditRequire */}
-            <Title level={5} style={{ marginTop: 12 }}>หน่วยกิตตามหมวดหมู่วิชา (ตาราง creditRequire)</Title>
+            {/* CREDIT REQUIRE */}
+            <Title level={5} style={{ marginTop: 24 }}>
+              หน่วยกิตตามหมวดหมู่วิชา
+            </Title>
             <Row gutter={12}>
               <Col span={12}>
                 <Form.Item label="วิชาแกน" name="coreSubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="วิชาเฉพาะด้าน" name="spacailSubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="วิชาเลือก" name="selectSubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="กลุ่มสาระอยู่ดีมีสุข" name="happySubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="กลุ่มสาระศาสตร์แห่งผู้ประกอบการ" name="entrepreneurshipSubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="กลุ่มสาระภาษากับการสื่อสาร" name="languageSubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="กลุ่มสาระพลเมืองไทยและพลเมืองโลก" name="peopleSubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="กลุ่มสาระสุนทรียศาสตร์" name="aestheticsSubjectCredit" initialValue={0}>
-                  <InputNumber min={0} style={{ width: "100%" }} />
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
                 </Form.Item>
               </Col>
             </Row>
 
-            <Space>
+            <Space style={{ marginTop: 16 }}>
               <Button onClick={() => router.push("/courses")}>ยกเลิก</Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>บันทึก</Button>
+              <Button type="primary" htmlType="submit" loading={submitting}>
+                บันทึก
+              </Button>
             </Space>
           </Form>
         </Card>
