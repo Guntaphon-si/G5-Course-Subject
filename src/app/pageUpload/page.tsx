@@ -105,7 +105,6 @@ export default function HomePage() {
                 <Space direction="vertical" size={6} style={{ width: '100%' }}>
                   <Paragraph style={{ marginBottom: 0 }}>- ไฟล์ต้องเป็นรหัส UTF-8</Paragraph>
                   <Paragraph style={{ marginBottom: 0 }}>- หัวคอลัมน์ต้องตรงตามเทมเพลต</Paragraph>
-                  <Paragraph style={{ marginBottom: 0 }}>- หากเจอข้อมูลซ้ำ ระบบจะข้ามอัตโนมัติ</Paragraph>
                 </Space>
                 <Divider style={{ margin: '12px 0' }} />
                 <Paragraph style={{ marginBottom: 6 }}>สถานะ:</Paragraph>
