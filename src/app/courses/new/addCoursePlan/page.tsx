@@ -88,12 +88,8 @@ export default function AddCoursePlanPage() {
       if (!res.ok) throw new Error(data.message || "เกิดข้อผิดพลาดในการบันทึก");
       message.success("บันทึกแผนการเรียนสำเร็จ");
       router.push("/courses");
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        message.error(e.message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
-      } else {
-        message.error("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
-      }
+    } catch (e: any) {
+      message.error(e.message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
     } finally {
       setSubmitting(false);
     }
@@ -144,8 +140,8 @@ export default function AddCoursePlanPage() {
                       .filter((course) => course.courseId == null)
                       .map((course, index) => (
                         <Select.Option
-                          key={`temp-${index}`}
-                          value={`temp-${index}`}
+                          key={index}
+                          value={index}
                         >
                           {course.nameCourseTh || "ไม่ระบุชื่อหลักสูตร"}
                         </Select.Option>
