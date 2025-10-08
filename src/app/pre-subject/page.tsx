@@ -8,6 +8,7 @@ type SubjectItem = {
   subjectCode: string;
   nameSubjectThai: string;
   nameSubjectEng: string;
+  courseNameTh?: string;
 };
 
 async function searchSubjects(q: string): Promise<SubjectItem[]> {
@@ -44,9 +45,11 @@ export default function PreSubjectPage() {
     subjectId: number;
     subjectCode: string;
     subjectNameTh: string;
+    subjectCourseNameTh?: string;
     previousSubjectId: number;
     previousSubjectCode: string;
     previousSubjectNameTh: string;
+    previousSubjectCourseNameTh?: string;
   };
   const [listLoading, setListLoading] = useState(false);
   const [rows, setRows] = useState<PreRow[]>([]);
@@ -89,14 +92,14 @@ export default function PreSubjectPage() {
   const handleSave = useCallback(async () => {
     if (!canSave) return;
     try {
-      setSaving(true);
-      await createPreSubject(selected1 as number, selected2 as number);
-      antdMessage.success('บันทึกสำเร็จ');
-    } catch (e: any) {
-      antdMessage.error(e.message || 'เกิดข้อผิดพลาด');
-    } finally {
-      setSaving(false);
-    }
+    setSaving(true);
+    await createPreSubject(selected1 as number, selected2 as number);
+    antdMessage.success('บันทึกสำเร็จ'); 
+  } catch (e: any) {
+    antdMessage.error(e.message || 'เกิดข้อผิดพลาด');
+  } finally {
+    setSaving(false);
+  }
   }, [canSave, selected1, selected2]);
 
   const reset = useCallback(() => {
@@ -113,7 +116,7 @@ export default function PreSubjectPage() {
   const toOptions = (items: SubjectItem[]) =>
     items.map((it) => ({
       value: String(it.subjectId),
-      label: `${it.subjectCode} — ${it.nameSubjectThai}`,
+      label: `${it.subjectCode} — ${it.nameSubjectThai}${it.courseNameTh ? ` -${it.courseNameTh}` : ''}`,
     }));
 
   const fetchRows = useCallback(async (q: string) => {
@@ -249,9 +252,9 @@ export default function PreSubjectPage() {
             pagination={{ pageSize: 10 }}
             columns={[
               { title: 'รหัสวิชา', dataIndex: 'subjectCode', key: 'subjectCode', width: 140 },
-              { title: 'ชื่อวิชา', dataIndex: 'subjectNameTh', key: 'subjectNameTh' },
+              { title: 'ชื่อวิชา', key: 'subjectNameTh', render: (_: any, r: PreRow) => `${r.subjectNameTh}${r.subjectCourseNameTh ? ` -${r.subjectCourseNameTh}` : ''}` },
               { title: 'รหัสวิชาที่ต้องเรียนก่อน', dataIndex: 'previousSubjectCode', key: 'previousSubjectCode', width: 180 },
-              { title: 'ชื่อวิชาที่ต้องเรียนก่อน', dataIndex: 'previousSubjectNameTh', key: 'previousSubjectNameTh' },
+              { title: 'ชื่อวิชาที่ต้องเรียนก่อน', key: 'previousSubjectNameTh', render: (_: any, r: PreRow) => `${r.previousSubjectNameTh}${r.previousSubjectCourseNameTh ? ` -${r.previousSubjectCourseNameTh}` : ''}` },
               {
                 title: 'การทำงาน', key: 'actions', width: 220,
                 render: (_: any, record: PreRow) => (

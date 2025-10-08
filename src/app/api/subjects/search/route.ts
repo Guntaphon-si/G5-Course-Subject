@@ -11,9 +11,11 @@ export async function GET(req: NextRequest) {
 
     const like = `%${q}%`;
     const [rows]: any = await db.execute(
-      `SELECT subjectId, subjectCode, nameSubjectThai, nameSubjectEng FROM subject 
-       WHERE subjectCode LIKE ? OR nameSubjectThai LIKE ? OR nameSubjectEng LIKE ? 
-       ORDER BY subjectCode LIMIT 20`,
+      `SELECT s.subjectId, s.subjectCode, s.nameSubjectThai, s.nameSubjectEng, c.nameCourseTh AS courseNameTh
+       FROM subject s
+       JOIN course c ON c.courseId = s.courseId
+       WHERE s.subjectCode LIKE ? OR s.nameSubjectThai LIKE ? OR s.nameSubjectEng LIKE ?
+       ORDER BY s.subjectCode LIMIT 20`,
       [like, like, like]
     );
 
