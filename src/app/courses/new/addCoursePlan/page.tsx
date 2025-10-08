@@ -88,8 +88,12 @@ export default function AddCoursePlanPage() {
       if (!res.ok) throw new Error(data.message || "เกิดข้อผิดพลาดในการบันทึก");
       message.success("บันทึกแผนการเรียนสำเร็จ");
       router.push("/courses");
-    } catch (e: any) {
-      message.error(e.message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        message.error(e.message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+      } else {
+        message.error("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+      }
     } finally {
       setSubmitting(false);
     }
