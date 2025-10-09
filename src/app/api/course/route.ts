@@ -69,12 +69,12 @@ export async function POST(request: NextRequest) {
       special_subject_credit,
       select_subject_credit, happy_subject_credit, entrepreneurship_subject_credit,
       language_subject_credit, people_subject_credit, aesthetics_subject_credit, internship_hours,
-      credit_intern
+      credit_intern,department_id
     } = body;
 
     const [courseResult]: any = await connection.execute(
-        `INSERT INTO course (name_course_th, name_course_use, name_course_eng, name_full_degree_th, name_full_degree_eng, name_initials_degree_th, name_initials_degree_eng) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [name_course_th, name_course_use, name_course_eng, name_full_degree_th, name_full_degree_eng, name_initials_degree_th, name_initials_degree_eng]
+        `INSERT INTO course (name_course_th, name_course_use, name_course_eng, name_full_degree_th, name_full_degree_eng, name_initials_degree_th, name_initials_degree_eng, department_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [name_course_th, name_course_use, name_course_eng, name_full_degree_th, name_full_degree_eng, name_initials_degree_th, name_initials_degree_eng,department_id]
     );
     const course_id = courseResult.insertId;
 

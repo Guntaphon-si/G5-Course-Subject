@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Button,
   Card,
@@ -8,6 +8,7 @@ import {
   Input,
   InputNumber,
   Row,
+  Select,
   Space,
   Typography,
   message,
@@ -40,15 +41,42 @@ interface CourseData {
   internship_hours: number;
   credit_intern: number;
 }
-
+interface DepartmentFromApi {
+  department_id: number;
+  department_code: string;
+  department_name:string;
+  // เพิ่ม field อื่นๆ ที่ API คืนค่ามาหากจำเป็น
+}
 
 export default function AddCoursePage() {
   const { Title } = Typography;
   const [form] = Form.useForm<CourseData>();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
-
+  const [loading, setLoading] = useState(true);
+  const [department, setDepartment] = useState<DepartmentFromApi[]>([]);
   // แก้ไข: เปลี่ยนค่าเริ่มต้นเป็น snake_case
+  useEffect(() => {
+      setLoading(true);
+      fetch("/api/department")
+        .then((res) => {
+          if (!res.ok)
+            throw new Error("ไม่สามารถดึงข้อมูลคณะได้จากเซิร์ฟเวอร์");
+          return res.json();
+        })
+        .then((data: DepartmentFromApi[]) => {
+          if (Array.isArray(data)) {
+            setDepartment(data);
+          } else {
+            message.error("รูปแบบข้อมูลคณะที่ได้รับไม่ถูกต้อง");
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          message.error(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูลคณะ");
+        })
+        .finally(() => setLoading(false));
+    }, []);
   const initialFormValues: CourseData = {
     name_course_th: '',
     plan_course: 4,
@@ -153,6 +181,31 @@ export default function AddCoursePage() {
               <Col span={12}>
                 <Form.Item label="ชื่อย่อปริญญา (อังกฤษ)" name="name_initials_degree_eng">
                   <Input placeholder="B.Eng." />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="คณะ"
+                  name="department_id"
+                  rules={[{ required: true, message: "กรุณาเลือกคณะ" }]}
+                >
+                  {/* เพิ่ม loading={loading} เพื่อแสดงสถานะการโหลด */}
+                  <Select
+                    placeholder="เลือกคณะ"
+                    optionFilterProp="children"
+                    loading={loading}
+                  >
+                    {department
+                      .filter((department) => department.department_id != null)
+                      .map((department) => (
+                        <Select.Option
+                          key={department.department_id}
+                          value={department.department_id}
+                        >
+                          {`${department.department_name} (${department.department_code} )`}
+                        </Select.Option>
+                      ))}
+                  </Select>
                 </Form.Item>
               </Col>
             </Row>
