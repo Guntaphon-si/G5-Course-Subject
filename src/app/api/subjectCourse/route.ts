@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
         subjectCourseId, 
         nameFullDegreeTh, 
         planCourse, 
-        subjectCode, 
         nameSubjectThai, 
         nameSubjectEng, 
         subjectCategoryName, 

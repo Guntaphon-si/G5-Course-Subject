@@ -8,6 +8,22 @@ export const runtime = 'nodejs';
 
 export const config = { api: { bodyParser: false } };
 
+// สร้าง Map สำหรับ sub_credit_id ตามตารางที่ระบุ
+const subCreditMap = new Map<string, number>([
+    ['3-3-0-6', 1],
+    ['1-0-3-2', 2],
+    ['2-2-0-4', 3],
+    ['3-2-3-6', 4],
+    ['1-1-0-2', 5],
+    ['1-0-2-3', 6],
+    ['1-2-0-4', 7],
+    ['2-0-6-3', 8],
+    ['6-0-0-0', 9],
+    ['3-3-0-3', 10],
+    ['3-2-2-5', 11],
+    ['1-0-3-2', 12],
+]);
+
 export async function POST(req: NextRequest) {
   let connection: PoolConnection | null = null;
   try {
@@ -51,10 +67,10 @@ export async function POST(req: NextRequest) {
     await connection.execute(
       `INSERT IGNORE INTO subject_type (subject_type_id, name_subject_type) VALUES (1, 'บรรยาย'), (2, 'ปฎิบัติ'), (3, 'บรรยาย + ปฎิบัติ')`
     );
-
-    const [existingSubjects]: any = await connection.execute('SELECT subject_id, subject_code FROM subject');
+    
+    const [existingSubjects]: any = await connection.execute('SELECT subject_id, subject_code, course_id FROM subject');
     const subjectMap: Map<string, number> = new Map(
-      (existingSubjects as any[]).map((s: any) => [String(s.subject_code).trim(), Number(s.subject_id)])
+      (existingSubjects as any[]).map((s: any) => [`${String(s.subject_code).trim()}-${s.course_id}`, Number(s.subject_id)])
     );
 
     const [courseRows]: any = await connection.execute('SELECT course_id, name_course_use FROM course');
@@ -116,26 +132,27 @@ export async function POST(req: NextRequest) {
         const subjectTypeId: number = lectureHours > 0 && labHours > 0 ? 3 : (labHours > 0 ? 2 : 1);
 
         let subjectId: number;
-
-        if (subjectMap.has(subjectCode)) {
-            subjectId = subjectMap.get(subjectCode)!;
+        
+        const compositeKey = `${subjectCode}-${courseId}`;
+        if (subjectMap.has(compositeKey)) {
+            subjectId = subjectMap.get(compositeKey)!;
         } else {
-            const [subCreditResult]: any = await connection.execute(
-                `INSERT INTO sub_credit (credit, lecture_hours, lab_hours, by_self_hours) VALUES (?, ?, ?, ?)`,
-                [credit, lectureHours, labHours, selfHours]
-            );
-            const subCreditId = subCreditResult.insertId;
+            // ค้นหา sub_credit_id จาก Map แทนการ INSERT ใหม่
+            const subCreditKey = `${credit}-${lectureHours}-${labHours}-${selfHours}`;
+            const subCreditId = subCreditMap.get(subCreditKey);
 
-            // =================== จุดที่แก้ไข ===================
-            // เพิ่ม subject_course และ coursePlanId เข้าไปในคำสั่ง SQL
+            if (!subCreditId) {
+                // หากไม่พบ ให้โยน Error เพื่อให้ผู้ใช้ตรวจสอบไฟล์ CSV
+                throw new Error(`แถวที่ ${rowNumber}: ไม่พบ sub_credit_id สำหรับการกำหนดค่า หน่วยกิต(${credit}), บรรยาย(${lectureHours}), ปฏิบัติ(${labHours}), เรียนรู้เอง(${selfHours})`);
+            }
+
             const [subjectResult]: any = await connection.execute(
-                `INSERT INTO subject (course_id, subject_type_id, subject_category_id, sub_credit_id, subject_course, subject_code, name_subject_thai, name_subject_eng, credit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [courseId, subjectTypeId, subjectCategoryId, subCreditId, coursePlanId, subjectCode, row['ชื่อวิชา(ภาษาไทย)'], row['ชื่อวิชา(ภาษาอังกฤษ)'], credit]
+                `INSERT INTO subject (course_id, subject_type_id, subject_category_id, sub_credit_id, subject_code, name_subject_thai, name_subject_eng, credit) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [courseId, subjectTypeId, subjectCategoryId, subCreditId, subjectCode, row['ชื่อวิชา(ภาษาไทย)'], row['ชื่อวิชา(ภาษาอังกฤษ)'], credit]
             );
-            // ==================================================
             
             subjectId = subjectResult.insertId;
-            subjectMap.set(subjectCode, subjectId);
+            subjectMap.set(compositeKey, subjectId);
         }
 
         const [existingLink]: any = await connection.execute(
