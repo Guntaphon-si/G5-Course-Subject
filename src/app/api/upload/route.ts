@@ -120,17 +120,21 @@ export async function POST(req: NextRequest) {
         if (subjectMap.has(subjectCode)) {
             subjectId = subjectMap.get(subjectCode)!;
         } else {
+            const [subCreditResult]: any = await connection.execute(
+                `INSERT INTO sub_credit (credit, lecture_hours, lab_hours, by_self_hours) VALUES (?, ?, ?, ?)`,
+                [credit, lectureHours, labHours, selfHours]
+            );
+            const subCreditId = subCreditResult.insertId;
+
+            // =================== จุดที่แก้ไข ===================
+            // เพิ่ม subject_course และ coursePlanId เข้าไปในคำสั่ง SQL
             const [subjectResult]: any = await connection.execute(
-                `INSERT INTO subject (course_id, subject_type_id, subject_category_id, subject_code, name_subject_thai, name_subject_eng, credit) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [courseId, subjectTypeId, subjectCategoryId, subjectCode, row['ชื่อวิชา(ภาษาไทย)'], row['ชื่อวิชา(ภาษาอังกฤษ)'], credit]
+                `INSERT INTO subject (course_id, subject_type_id, subject_category_id, sub_credit_id, subject_course, subject_code, name_subject_thai, name_subject_eng, credit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [courseId, subjectTypeId, subjectCategoryId, subCreditId, coursePlanId, subjectCode, row['ชื่อวิชา(ภาษาไทย)'], row['ชื่อวิชา(ภาษาอังกฤษ)'], credit]
             );
+            // ==================================================
+            
             subjectId = subjectResult.insertId;
-
-            await connection.execute(
-                `INSERT INTO sub_credit (subject_id, credit, lecture_hours, lab_hours, by_self_hours) VALUES (?, ?, ?, ?, ?)`,
-                [subjectId, credit, lectureHours, labHours, selfHours]
-            );
-
             subjectMap.set(subjectCode, subjectId);
         }
 
@@ -141,7 +145,7 @@ export async function POST(req: NextRequest) {
 
         if (existingLink.length === 0) {
             await connection.execute(
-                `INSERT INTO subject_course (subject_id, course_plan_id, study_year, term) VALUES (?, ?, ?, ?)`,
+                `INSERT INTO subject_course (subject_id, course_plan_id, study_year, study_term) VALUES (?, ?, ?, ?)`,
                 [subjectId, coursePlanId, studyYear, term]
             );
         }
