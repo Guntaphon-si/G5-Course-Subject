@@ -17,8 +17,9 @@ import { useRouter } from "next/navigation";
 
 // Interface สำหรับข้อมูลหลักสูตรที่ดึงมาจาก API
 interface CourseFromApi {
-  courseId: number;
-  nameCourseTh: string;
+  course_id: number;
+  name_course_th: string;
+  name_course_use:string;
   // เพิ่ม field อื่นๆ ที่ API คืนค่ามาหากจำเป็น
 }
 
@@ -124,13 +125,13 @@ export default function AddCoursePlanPage() {
                     loading={loading}
                   >
                     {courses
-                      .filter((course) => course.courseId != null)
+                      .filter((course) => course.course_id != null)
                       .map((course) => (
                         <Select.Option
-                          key={course.courseId}
-                          value={course.courseId}
+                          key={course.course_id}
+                          value={course.course_id}
                         >
-                          {`${course.nameCourseTh|| "ไม่ระบุชื่อหลักสูตร"} (${course.nameCourseUse|| "ไม่ระบุชื่อหลักสูตร"} )`}
+                          {`${course.name_course_th|| "ไม่ระบุชื่อหลักสูตร"} (${course.name_course_use|| "ไม่ระบุชื่อหลักสูตร"} )`}
                         </Select.Option>
                       ))}
 

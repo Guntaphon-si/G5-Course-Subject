@@ -10,33 +10,33 @@ export async function GET() {
     const connection = await pool.getConnection();
     const [rows] = await connection.query(
       `SELECT 
-        cp.coursePlanId,
-        c.nameCourseTh,
-        cp.planCourse,
-        cp.totalCredit,
-        cp.generalSubjectCredit,
-        cp.specificSubjectCredit,
-        cp.freeSubjectCredit,
-        cp.coreSubjectCredit,
-        cp.spacailSubjectCredit,
-        cp.selectSubjectCredit,
-        cp.happySubjectCredit,
-        cp.entrepreneurshipSubjectCredit,
-        cp.languageSubjectCredit,
-        cp.peopleSubjectCredit,
-        cp.aestheticsSubjectCredit,
-        cp.internshipHours,
-        cp.creditIntern 
-      FROM coursePlan cp
-      INNER JOIN course c ON c.courseId = cp.courseId 
-      WHERE cp.isVisible = 1`
+        cp.course_plan_id,
+        c.name_course_use,
+        cp.plan_course,
+        cp.total_credit,
+        cp.general_subject_credit,
+        cp.specific_subject_credit,
+        cp.free_subject_credit,
+        cp.core_subject_credit,
+        cp.special_subject_credit,
+        cp.select_subject_credit,
+        cp.happy_subject_credit,
+        cp.entrepreneurship_subject_credit,
+        cp.language_subject_credit,
+        cp.people_subject_credit,
+        cp.aesthetics_subject_credit,
+        cp.internship_hours,
+        cp.credit_intern
+    FROM course_plan cp
+    INNER JOIN course c ON c.course_id = cp.course_id
+    WHERE cp.is_visible = 1;`
     );
     connection.release();
     
     // Ant Design Table ต้องการ key ที่ไม่ซ้ำกันในแต่ละแถว
     const dataWithKeys = (rows as any[]).map(row => ({
       ...row,
-      key: row.coursePlanId
+      key: row.course_plan_id
     }));
 
     return NextResponse.json(dataWithKeys);
@@ -142,7 +142,7 @@ export async function PATCH(request: NextRequest) {
 
     connection = await pool.getConnection();
     const [result]: any = await connection.execute(
-      "UPDATE `coursePlan` SET isVisible = 0 WHERE coursePlanId = ?", 
+      "UPDATE `course_plan` SET is_visible = 0 WHERE course_plan_id = ?", 
       [id]
     );
     

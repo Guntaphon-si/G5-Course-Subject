@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const connection = await pool.getConnection();
     const [rows] = await connection.query(
-      `SELECT courseId, nameCourseTh ,nameCourseUse FROM course`
+      `SELECT course_id, name_course_th ,name_course_use FROM course`
     );
     connection.release();
     

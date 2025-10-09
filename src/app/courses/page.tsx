@@ -31,23 +31,24 @@ interface FixedDataType {
 }
 interface CourseDataType {
   key: React.Key;
-  coursePlanId: number;
-  nameCourseTh: string;
-  planCourse: string;
-  totalCredit: number;
-  generalSubjectCredit: number;
-  specificSubjectCredit: number;
-  freeSubjectCredit: number;
-  coreSubjectCredit: number; // แก้ไขให้ตรงกับ DB
-  spacailSubjectCredit: number; // แก้ไขให้ตรงกับ DB
-  selectSubjectCredit: number; // แก้ไขให้ตรงกับ DB
-  happySubjectCredit: number; // แก้ไขให้ตรงกับ DB
-  entrepreneurshipSubjectCredit: number; // แก้ไขให้ตรงกับ DB
-  languageSubjectCredit: number; // แก้ไขให้ตรงกับ DB
-  peopleSubjectCredit: number; // แก้ไขให้ตรงกับ DB
-  aestheticsSubjectCredit: number; // แก้ไขให้ตรงกับ DB
-  internshipHours: number; // แก้ไขให้ตรงกับ DB
-  creditIntern: number; // แก้ไขให้ตรงกับ DB
+  course_plan_id: number;
+name_course_use: string;
+plan_course: string;
+total_credit: number;
+general_subject_credit: number;
+specific_subject_credit: number;
+free_subject_credit: number;
+core_subject_credit: number;
+special_subject_credit: number;
+select_subject_credit: number;
+happy_subject_credit: number;
+entrepreneurship_subject_credit: number;
+language_subject_credit: number;
+people_subject_credit: number;
+aesthetics_subject_credit: number;
+internship_hours: number;
+credit_intern: number;
+
 }
 
 const App: React.FC = () => {
@@ -95,22 +96,22 @@ const App: React.FC = () => {
   };
   const fixedColumns: TableColumnsType<CourseDataType> = [
 
- { title: 'ชื่อหลักสูตร (ไทย)', dataIndex: 'nameCourseTh', fixed: true, width: 200 },
-  { title: 'แผนการเรียน', dataIndex: 'planCourse', width: 150,fixed: true },
-  { title: 'หน่วยกิตรวม', dataIndex: 'totalCredit', width: 120 },
-  { title: 'หมวดวิชาศึกษาทั่วไป', dataIndex: 'generalSubjectCredit', width: 150 },
-  { title: 'หมวดวิชาเฉพาะ', dataIndex: 'specificSubjectCredit', width: 150 },
-  { title: 'หมวดวิชาเลือกเสรี', dataIndex: 'freeSubjectCredit', width: 150 },
-  { title: 'วิชาแกน', dataIndex: 'coreSubjectCredit', width: 120 },
-  { title: 'วิชาเฉพาะด้าน', dataIndex: 'spacailSubjectCredit', width: 150 },
-  { title: 'วิชาเลือก', dataIndex: 'selectSubjectCredit', width: 120 },
-  { title: 'กลุ่มสาระอยู่ดีมีสุข', dataIndex: 'happySubjectCredit', width: 180 },
-  { title: 'กลุ่มสาระศาสตร์แห่งผู้ประกอบการ', dataIndex: 'entrepreneurshipSubjectCredit', width: 220 },
-  { title: 'กลุ่มสาระภาษาและการสื่อสาร', dataIndex: 'languageSubjectCredit', width: 220 },
-  { title: 'กลุ่มสาระพลเมืองดี', dataIndex: 'peopleSubjectCredit', width: 180 },
-  { title: 'กลุ่มสาระสุนทรียศาสตร์', dataIndex: 'aestheticsSubjectCredit', width: 180 },
-  { title: 'ชั่วโมงฝึกงาน', dataIndex: 'internshipHours', width: 150 },
-  { title: 'หน่วยกิตฝึกงาน', dataIndex: 'creditIntern', width: 150 },
+ { title: 'ชื่อหลักสูตร (ไทย)', dataIndex: 'name_course_use', fixed: true, width: 200 },
+{ title: 'แผนการเรียน', dataIndex: 'plan_course', width: 150, fixed: true },
+{ title: 'หน่วยกิตรวม', dataIndex: 'total_credit', width: 120 },
+{ title: 'หมวดวิชาศึกษาทั่วไป', dataIndex: 'general_subject_credit', width: 150 },
+{ title: 'หมวดวิชาเฉพาะ', dataIndex: 'specific_subject_credit', width: 150 },
+{ title: 'หมวดวิชาเลือกเสรี', dataIndex: 'free_subject_credit', width: 150 },
+{ title: 'วิชาแกน', dataIndex: 'core_subject_credit', width: 120 },
+{ title: 'วิชาเฉพาะด้าน', dataIndex: 'special_subject_credit', width: 150 },
+{ title: 'วิชาเลือก', dataIndex: 'select_subject_credit', width: 120 },
+{ title: 'กลุ่มสาระอยู่ดีมีสุข', dataIndex: 'happy_subject_credit', width: 180 },
+{ title: 'กลุ่มสาระศาสตร์แห่งผู้ประกอบการ', dataIndex: 'entrepreneurship_subject_credit', width: 220 },
+{ title: 'กลุ่มสาระภาษาและการสื่อสาร', dataIndex: 'language_subject_credit', width: 220 },
+{ title: 'กลุ่มสาระพลเมืองดี', dataIndex: 'people_subject_credit', width: 180 },
+{ title: 'กลุ่มสาระสุนทรียศาสตร์', dataIndex: 'aesthetics_subject_credit', width: 180 },
+{ title: 'ชั่วโมงฝึกงาน', dataIndex: 'internship_hours', width: 150 },
+{ title: 'หน่วยกิตฝึกงาน', dataIndex: 'credit_intern', width: 150 },
   {
       title: 'การจัดการ',
       key: 'action',
@@ -118,10 +119,10 @@ const App: React.FC = () => {
       width: 250,
       render: (text, record) => ( // record คือข้อมูลของแถวนั้นๆ
         <Space size="middle">
-          <Button onClick={() => handleViewDetails(record.coursePlanId)}>
+          <Button onClick={() => handleViewDetails(record.course_plan_id)}>
             👁️ ดูรายละเอียด
           </Button>
-          <Button type="primary" danger onClick={() => handleDelete(record.coursePlanId)}>
+          <Button type="primary" danger onClick={() => handleDelete(record.course_plan_id)}>
             🗑️ ลบ
           </Button>
         </Space>
@@ -163,7 +164,7 @@ const App: React.FC = () => {
         columns={fixedColumns}
         dataSource={dataSource}
         pagination={{ pageSize: 10 }} // เพิ่ม Pagination เพื่อความสวยงาม
-        scroll={{ x: 2500, y: 500 }} // ปรับ scroll x ให้กว้างขึ้น
+        scroll={{ x: 2500}} // ปรับ scroll x ให้กว้างขึ้น
         bordered
       />
     </Flex>
