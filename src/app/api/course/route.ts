@@ -3,40 +3,39 @@ import pool from '../../../../lib/db';
 import { PoolConnection } from 'mysql2/promise';
 
 /**
- * GET: ดึงข้อมูลหลักสูตรทั้งหมดที่ isVisible = 1
+ * GET: ดึงข้อมูลหลักสูตรทั้งหมดที่ is_visible = 1
  */
 export async function GET() {
   try {
     const connection = await pool.getConnection();
     const [rows] = await connection.query(
       `SELECT 
-        cp.coursePlanId,
-        c.nameCourseTh,
-        cp.planCourse,
-        cp.totalCredit,
-        cp.generalSubjectCredit,
-        cp.specificSubjectCredit,
-        cp.freeSubjectCredit,
-        cp.coreSubjectCredit,
-        cp.spacailSubjectCredit,
-        cp.selectSubjectCredit,
-        cp.happySubjectCredit,
-        cp.entrepreneurshipSubjectCredit,
-        cp.languageSubjectCredit,
-        cp.peopleSubjectCredit,
-        cp.aestheticsSubjectCredit,
-        cp.internshipHours,
-        cp.creditIntern 
-      FROM coursePlan cp
-      INNER JOIN course c ON c.courseId = cp.courseId 
-      WHERE cp.isVisible = 1`
+        cp.course_plan_id,
+        c.name_course_th,
+        cp.plan_course,
+        cp.total_credit,
+        cp.general_subject_credit,
+        cp.specific_subject_credit,
+        cp.free_subject_credit,
+        cp.core_subject_credit,
+        cp.special_subject_credit,
+        cp.select_subject_credit,
+        cp.happy_subject_credit,
+        cp.entrepreneurship_subject_credit,
+        cp.language_subject_credit,
+        cp.people_subject_credit,
+        cp.aesthetics_subject_credit,
+        cp.internship_hours,
+        cp.credit_intern 
+      FROM course_plan cp
+      INNER JOIN course c ON c.course_id = cp.course_id 
+      WHERE cp.is_visible = 1`
     );
     connection.release();
     
-    // Ant Design Table ต้องการ key ที่ไม่ซ้ำกันในแต่ละแถว
     const dataWithKeys = (rows as any[]).map(row => ({
       ...row,
-      key: row.coursePlanId
+      key: row.course_plan_id
     }));
 
     return NextResponse.json(dataWithKeys);
@@ -62,41 +61,44 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // 1. เพิ่มข้อมูลลงตาราง course
+    // แก้ไข: เปลี่ยนตัวแปรเป็น snake_case ทั้งหมด
     const {
-      nameCourseTh, nameCourseUse, nameCourseEng, nameFullDegreeTh, nameFullDegreeEng,
-      nameInitialsDegreeTh, nameInitialsDegreeEng, planCourse, totalCredit,
-      generalSubjectCredit, specificSubjectCredit, freeSubjectCredit, coreSubjectCredit,
-      spacailSubjectCredit, selectSubjectCredit, happySubjectCredit, entrepreneurshipSubjectCredit,
-      languageSubjectCredit, peopleSubjectCredit, aestheticsSubjectCredit, internshipHours,
-      creditIntern
+      name_course_th, name_course_use, name_course_eng, name_full_degree_th, name_full_degree_eng,
+      name_initials_degree_th, name_initials_degree_eng, plan_course, total_credit,
+      general_subject_credit, specific_subject_credit, free_subject_credit, core_subject_credit,
+      special_subject_credit,
+      select_subject_credit, happy_subject_credit, entrepreneurship_subject_credit,
+      language_subject_credit, people_subject_credit, aesthetics_subject_credit, internship_hours,
+      credit_intern
     } = body;
 
     const [courseResult]: any = await connection.execute(
-        `INSERT INTO course (nameCourseTh, nameCourseUse, nameCourseEng, nameFullDegreeTh, nameFullDegreeEng, nameInitialsDegreeTh, nameInitialsDegreeEng) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [nameCourseTh, nameCourseUse, nameCourseEng, nameFullDegreeTh, nameFullDegreeEng, nameInitialsDegreeTh, nameInitialsDegreeEng]
+        `INSERT INTO course (name_course_th, name_course_use, name_course_eng, name_full_degree_th, name_full_degree_eng, name_initials_degree_th, name_initials_degree_eng) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [name_course_th, name_course_use, name_course_eng, name_full_degree_th, name_full_degree_eng, name_initials_degree_th, name_initials_degree_eng]
     );
-    const courseId = courseResult.insertId;
+    const course_id = courseResult.insertId;
 
-    // 2. เพิ่มข้อมูลลงตาราง coursePlan
+    // 2. เพิ่มข้อมูลลงตาราง course_plan
     const [planResult]: any = await connection.execute(
-        `INSERT INTO coursePlan (courseId, planCourse, totalCredit, generalSubjectCredit, specificSubjectCredit, freeSubjectCredit, coreSubjectCredit, spacailSubjectCredit, selectSubjectCredit, happySubjectCredit, entrepreneurshipSubjectCredit, languageSubjectCredit, peopleSubjectCredit, aestheticsSubjectCredit, internshipHours, creditIntern, isVisible) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-        [courseId, planCourse, totalCredit, generalSubjectCredit, specificSubjectCredit, freeSubjectCredit, coreSubjectCredit, spacailSubjectCredit, selectSubjectCredit, happySubjectCredit, entrepreneurshipSubjectCredit, languageSubjectCredit, peopleSubjectCredit, aestheticsSubjectCredit, internshipHours, creditIntern]
+        `INSERT INTO course_plan (course_id, plan_course, total_credit, general_subject_credit, specific_subject_credit, free_subject_credit, core_subject_credit, special_subject_credit, select_subject_credit, happy_subject_credit, entrepreneurship_subject_credit, language_subject_credit, people_subject_credit, aesthetics_subject_credit, internship_hours, credit_intern, is_visible) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        [course_id, plan_course, total_credit, general_subject_credit, specific_subject_credit, free_subject_credit, core_subject_credit, special_subject_credit, select_subject_credit, happy_subject_credit, entrepreneurship_subject_credit, language_subject_credit, people_subject_credit, aesthetics_subject_credit, internship_hours, credit_intern]
     );
-    const coursePlanId = planResult.insertId;
+    const course_plan_id = planResult.insertId;
 
-    // 3. เพิ่มข้อมูลลงตาราง creditRequire
-    const [categoryRows]: any = await connection.execute('SELECT subjectCategoryId, subjectGroupName FROM subjectCategory');
-    const categoryMap = new Map(categoryRows.map((row: any) => [row.subjectGroupName, row.subjectCategoryId]));
+    // 3. เพิ่มข้อมูลลงตาราง credit_require
+    const [categoryRows]: any = await connection.execute('SELECT subject_category_id, subject_group_name FROM subjectCategory');
+    const categoryMap = new Map(categoryRows.map((row: any) => [row.subject_group_name, row.subject_category_id]));
 
+    // แก้ไข: เปลี่ยน key เป็น snake_case
     const creditMapping = {
-        coreSubjectCredit: 'วิชาแกน',
-        spacailSubjectCredit: 'วิชาเฉพาะด้าน',
-        selectSubjectCredit: 'วิชาเลือก',
-        happySubjectCredit: 'กลุ่มสาระอยู่ดีมีสุข',
-        entrepreneurshipSubjectCredit: 'กลุ่มสาระศาสตร์แห่งผู้ประกอบการ',
-        languageSubjectCredit: 'กลุ่มสาระภาษากับการสื่อสาร',
-        peopleSubjectCredit: 'กลุ่มสาระพลเมืองไทยและพลเมืองโลก',
-        aestheticsSubjectCredit: 'กลุ่มสาระสุนทรียศาสตร์'
+        core_subject_credit: 'วิชาแกน',
+        special_subject_credit: 'วิชาเฉพาะด้าน',
+        select_subject_credit: 'วิชาเลือก',
+        happy_subject_credit: 'กลุ่มสาระอยู่ดีมีสุข',
+        entrepreneurship_subject_credit: 'กลุ่มสาระศาสตร์แห่งผู้ประกอบการ',
+        language_subject_credit: 'กลุ่มสาระภาษากับการสื่อสาร',
+        people_subject_credit: 'กลุ่มสาระพลเมืองไทยและพลเมืองโลก',
+        aesthetics_subject_credit: 'กลุ่มสาระสุนทรียศาสตร์'
     };
 
     for (const [bodyKey, groupName] of Object.entries(creditMapping)) {
@@ -105,15 +107,16 @@ export async function POST(request: NextRequest) {
 
         if (subjectCategoryId) {
             await connection.execute(
-                'INSERT INTO creditRequire (coursePlanId, subjectCategoryId, creditSubject) VALUES (?, ?, ?)',
-                [coursePlanId, subjectCategoryId, creditSubject]
+                'INSERT INTO credit_require (course_plan_id, subject_category_id, credit_subject) VALUES (?, ?, ?)',
+                [course_plan_id, subjectCategoryId, creditSubject]
             );
         }
     }
 
     await connection.commit();
     
-    return NextResponse.json({ message: 'สร้างหลักสูตรสำเร็จ', courseId }, { status: 201 });
+    // แก้ไข: ส่ง course_id กลับไป
+    return NextResponse.json({ message: 'สร้างหลักสูตรสำเร็จ', course_id: course_id }, { status: 201 });
 
   } catch (error: any) {
     if (connection) {
@@ -129,21 +132,22 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * PATCH: ซ่อนหลักสูตร (set isVisible = 0)
+ * PATCH: ซ่อนหลักสูตร (set is_visible = 0)
  */
 export async function PATCH(request: NextRequest) {
   let connection: PoolConnection | null = null;
   try {
-    const { id } = await request.json();
+    // แก้ไข: รับ course_plan_id
+    const { course_plan_id } = await request.json();
 
-    if (!id) {
+    if (!course_plan_id) {
       return NextResponse.json({ message: "ID is required" }, { status: 400 });
     }
 
     connection = await pool.getConnection();
     const [result]: any = await connection.execute(
-      "UPDATE `coursePlan` SET isVisible = 0 WHERE coursePlanId = ?", 
-      [id]
+      "UPDATE `course_plan` SET is_visible = 0 WHERE course_plan_id = ?", 
+      [course_plan_id]
     );
     
     if (result.affectedRows === 0) {
