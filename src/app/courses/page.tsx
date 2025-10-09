@@ -76,7 +76,7 @@ const App: React.FC = () => {
             'Content-Type': 'application/json',
           },
           // 3. ส่ง ID เข้าไปใน body ของ request
-          body: JSON.stringify({ id: id }),
+          body: JSON.stringify({ course_plan_id: id }),
           });
 
           if (!response.ok) {
