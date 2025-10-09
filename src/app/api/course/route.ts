@@ -11,7 +11,7 @@ export async function GET() {
     const [rows] = await connection.query(
       `SELECT 
         cp.course_plan_id,
-        c.name_course_th,
+        c.name_course_use,
         cp.plan_course,
         cp.total_credit,
         cp.general_subject_credit,
