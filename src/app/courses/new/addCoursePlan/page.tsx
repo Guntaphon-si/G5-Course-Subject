@@ -55,7 +55,7 @@ export default function AddCoursePlanPage() {
   // ดึงข้อมูลหลักสูตรทั้งหมด (ใช้ useEffect เพื่อเรียก API เพียงครั้งเดียว)
   useEffect(() => {
     setLoading(true);
-    fetch("/api/course")
+    fetch("/api/coursePlan/CourseDropDown")
       .then((res) => {
         if (!res.ok)
           throw new Error("ไม่สามารถดึงข้อมูลหลักสูตรได้จากเซิร์ฟเวอร์");
@@ -124,19 +124,18 @@ export default function AddCoursePlanPage() {
                     loading={loading}
                   >
                     {courses
-                      // ✅ กรองเฉพาะ course ที่มี courseId จริง
                       .filter((course) => course.courseId != null)
                       .map((course) => (
                         <Select.Option
                           key={course.courseId}
                           value={course.courseId}
                         >
-                          {course.nameCourseTh || "ไม่ระบุชื่อหลักสูตร"}
+                          {`${course.nameCourseTh|| "ไม่ระบุชื่อหลักสูตร"} (${course.nameCourseUse|| "ไม่ระบุชื่อหลักสูตร"} )`}
                         </Select.Option>
                       ))}
 
                     {/* ✅ กรณีมีบาง course ที่ไม่มี courseId ให้ fallback key */}
-                    {courses
+                    {/* {courses
                       .filter((course) => course.courseId == null)
                       .map((course, index) => (
                         <Select.Option
@@ -145,7 +144,7 @@ export default function AddCoursePlanPage() {
                         >
                           {course.nameCourseTh || "ไม่ระบุชื่อหลักสูตร"}
                         </Select.Option>
-                      ))}
+                      ))} */}
                   </Select>
                 </Form.Item>
               </Col>
