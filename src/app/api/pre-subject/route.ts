@@ -32,23 +32,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
-
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const subjectId = Number(body.subjectId);
   const previousSubjectId = Number(body.previousSubjectId);
+
   if (!subjectId || !previousSubjectId) {
     return NextResponse.json({ message: 'subjectId และ previousSubjectId ต้องไม่ว่าง' }, { status: 400 });
   }
+
   if (subjectId === previousSubjectId) {
     return NextResponse.json({ message: 'ห้ามเชื่อมรายวิชากับตัวเอง' }, { status: 400 });
   }
 
   try {
     // ---- START: โค้ดที่แก้ไข ----
-    // ตรวจสอบว่ารายวิชามีอยู่จริง และดึง course_id มาเปรียบเทียบ
+    // ตรวจสอบว่ารายวิชามีอยู่จริงในฐานข้อมูลหรือไม่
     const [subjects]: any = await db.execute(
-      'SELECT subject_id, course_id FROM subject WHERE subject_id IN (?, ?)',
+      'SELECT subject_id FROM subject WHERE subject_id IN (?, ?)',
       [subjectId, previousSubjectId]
     );
 
@@ -56,17 +57,9 @@ export async function POST(req: NextRequest) {
     if (!subjects || subjects.length !== 2) {
       return NextResponse.json({ message: 'ไม่พบรายวิชาหลักหรือรายวิชาที่ต้องเรียนก่อนในฐานข้อมูล' }, { status: 404 });
     }
-
-    // เปรียบเทียบ course_id ของทั้งสองรายวิชา
-    const mainSubjectCourseId = subjects.find((s: any) => s.subject_id === subjectId).course_id;
-    const prevSubjectCourseId = subjects.find((s: any) => s.subject_id === previousSubjectId).course_id;
-
-    if (mainSubjectCourseId !== prevSubjectCourseId) {
-      return NextResponse.json({ message: 'ไม่สามารถเชื่อมวิชากับรายวิชาที่อยู่คนละหลักสูตรได้' }, { status: 400 });
-    }
     // ---- END: โค้ดที่แก้ไข ----
 
-    // กันซ้ำแบบ exact pair
+    // กันซ้ำแบบ exact pair (subject_id ตรงกันทั้งคู่)
     const [dup]: any = await db.execute(
       'SELECT pre_subject_id FROM pre_subject WHERE subject_id = ? AND previous_subject_id = ? LIMIT 1',
       [subjectId, previousSubjectId]
@@ -75,24 +68,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'รายวิชานี้ได้เชื่อมกันอยู่เเล้ว' }, { status: 409 });
     }
 
-    // กันซ้ำแบบ รหัสวิชา + หลักสูตร ของวิชาที่ต้องเรียนก่อน (แม้จะเป็นคนละ subject_id)
+    // กันซ้ำตามรหัสวิชาของวิชาที่ต้องเรียนก่อน (previous subject)
     const [prevInfo]: any = await db.execute(
-      'SELECT subject_code, course_id FROM subject WHERE subject_id = ? LIMIT 1',
+      'SELECT subject_code FROM subject WHERE subject_id = ? LIMIT 1',
       [previousSubjectId]
     );
-    // ส่วนนี้ไม่ต้องเช็ค prevInfo.length เพราะการเช็คด้านบนครอบคลุมแล้ว
+    // ไม่ต้องเช็ค prevInfo.length เพราะการเช็ค subjects.length ด้านบนครอบคลุมแล้ว
     const prevCode = prevInfo[0].subject_code;
-    const prevCourseId = prevInfo[0].course_id;
-    const [dupByCodeCourse]: any = await db.execute(
+
+    const [dupByCode]: any = await db.execute(
       `SELECT ps.pre_subject_id
        FROM pre_subject ps
        JOIN subject p ON p.subject_id = ps.previous_subject_id
-       WHERE ps.subject_id = ? AND p.subject_code = ? AND p.course_id = ?
+       WHERE ps.subject_id = ? AND p.subject_code = ?
        LIMIT 1`,
-      [subjectId, prevCode, prevCourseId]
+      [subjectId, prevCode]
     );
-    if (dupByCodeCourse && dupByCodeCourse.length > 0) {
-      return NextResponse.json({ message: 'เชื่อมข้อมูลซ้ำ (ซ้ำตาม รหัสวิชา + หลักสูตร)' }, { status: 400 });
+
+    if (dupByCode && dupByCode.length > 0) {
+      return NextResponse.json({ message: 'เชื่อมข้อมูลซ้ำ (รายวิชานี้ได้เชื่อมกับวิชาที่มีรหัสเดียวกันอยู่แล้ว)' }, { status: 409 });
     }
 
     await db.execute(
@@ -102,7 +96,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ message: 'บันทึกความสัมพันธ์สำเร็จ' }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    console.error('Error creating prerequisite:', error); // เพิ่ม logging เพื่อ debug
+    return NextResponse.json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์', error: error.message }, { status: 500 });
   }
 }
 
