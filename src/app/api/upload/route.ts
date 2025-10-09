@@ -8,7 +8,6 @@ export const runtime = 'nodejs';
 
 export const config = { api: { bodyParser: false } };
 
-// สร้าง Map สำหรับ sub_credit_id ตามตารางที่ระบุ
 const subCreditMap = new Map<string, number>([
     ['3-3-0-6', 1],
     ['1-0-3-2', 2],
@@ -68,19 +67,22 @@ export async function POST(req: NextRequest) {
       `INSERT IGNORE INTO subject_type (subject_type_id, name_subject_type) VALUES (1, 'บรรยาย'), (2, 'ปฎิบัติ'), (3, 'บรรยาย + ปฎิบัติ')`
     );
     
+    // =================== จุดที่แก้ไข ===================
+    // 1. ดึง subject_code และ course_id มาสร้าง key แบบผสมสำหรับเช็คข้อมูลซ้ำ
     const [existingSubjects]: any = await connection.execute('SELECT subject_id, subject_code, course_id FROM subject');
     const subjectMap: Map<string, number> = new Map(
       (existingSubjects as any[]).map((s: any) => [`${String(s.subject_code).trim()}-${s.course_id}`, Number(s.subject_id)])
     );
+    // =================================================
 
     const [courseRows]: any = await connection.execute('SELECT course_id, name_course_use FROM course');
     const courseMap: Map<string, number> = new Map(
       (courseRows as any[]).map((r: any) => [String(r.name_course_use).trim(), Number(r.course_id)])
     );
 
-    const [planRows]: any = await connection.execute('SELECT course_plan_id, plan_course FROM course_plan');
+    const [planRows]: any = await connection.execute('SELECT course_plan_id, plan_course, course_id FROM course_plan');
     const coursePlanMap: Map<string, number> = new Map(
-      (planRows as any[]).map((r: any) => [String(r.plan_course).trim(), Number(r.course_plan_id)])
+      (planRows as any[]).map((r: any) => [`${r.course_id}-${String(r.plan_course).trim()}`, Number(r.course_plan_id)])
     );
 
     const [categoryRows]: any = await connection.execute('SELECT subject_category_id, subject_group_name FROM subject_category');
@@ -107,8 +109,9 @@ export async function POST(req: NextRequest) {
             if (planName.includes('สหกิจ')) return 'แผนสหกิจศึกษา';
             return planName;
         })();
-        const coursePlanId = coursePlanMap.get(normalizedPlan);
-        if (!coursePlanId) throw new Error(`แถวที่ ${rowNumber}: ไม่พบแผนการเรียนชื่อ '${normalizedPlan}' ในฐานข้อมูล`);
+        const coursePlanCompositeKey = `${courseId}-${normalizedPlan}`;
+        const coursePlanId = coursePlanMap.get(coursePlanCompositeKey);
+        if (!coursePlanId) throw new Error(`แถวที่ ${rowNumber}: ไม่พบแผนการเรียนชื่อ '${normalizedPlan}' สำหรับหลักสูตร '${courseName}' ในฐานข้อมูล`);
 
         const categoryGroup = String(row['กลุ่มของวิชาตามหลักสูตร'] || '').trim();
         const subjectCategoryId = categoryByGroupName.get(categoryGroup);
@@ -132,17 +135,19 @@ export async function POST(req: NextRequest) {
         const subjectTypeId: number = lectureHours > 0 && labHours > 0 ? 3 : (labHours > 0 ? 2 : 1);
 
         let subjectId: number;
-        
+
+        // =================== จุดที่แก้ไข ===================
+        // 2. สร้าง key จาก subjectCode และ courseId เพื่อเช็คข้อมูลซ้ำ
         const compositeKey = `${subjectCode}-${courseId}`;
         if (subjectMap.has(compositeKey)) {
+            // ถ้ามีอยู่แล้ว (วิชารหัสนี้ในหลักสูตรนี้) ให้ใช้ subject_id เดิม
             subjectId = subjectMap.get(compositeKey)!;
         } else {
-            // ค้นหา sub_credit_id จาก Map แทนการ INSERT ใหม่
+            // ถ้ายังไม่มี ให้เพิ่มข้อมูลวิชาใหม่
             const subCreditKey = `${credit}-${lectureHours}-${labHours}-${selfHours}`;
             const subCreditId = subCreditMap.get(subCreditKey);
 
             if (!subCreditId) {
-                // หากไม่พบ ให้โยน Error เพื่อให้ผู้ใช้ตรวจสอบไฟล์ CSV
                 throw new Error(`แถวที่ ${rowNumber}: ไม่พบ sub_credit_id สำหรับการกำหนดค่า หน่วยกิต(${credit}), บรรยาย(${lectureHours}), ปฏิบัติ(${labHours}), เรียนรู้เอง(${selfHours})`);
             }
 
@@ -152,8 +157,10 @@ export async function POST(req: NextRequest) {
             );
             
             subjectId = subjectResult.insertId;
+            // 3. เพิ่มข้อมูลใหม่ลงใน map ด้วย key แบบผสม เพื่อป้องกันการเพิ่มซ้ำจากในไฟล์เดียวกัน
             subjectMap.set(compositeKey, subjectId);
         }
+        // =================================================
 
         const [existingLink]: any = await connection.execute(
             'SELECT subject_course_id FROM subject_course WHERE subject_id = ? AND course_plan_id = ?',
