@@ -67,13 +67,10 @@ export async function POST(req: NextRequest) {
       `INSERT IGNORE INTO subject_type (subject_type_id, name_subject_type) VALUES (1, 'บรรยาย'), (2, 'ปฎิบัติ'), (3, 'บรรยาย + ปฎิบัติ')`
     );
     
-    // =================== จุดที่แก้ไข ===================
-    // 1. ดึง subject_code และ course_id มาสร้าง key แบบผสมสำหรับเช็คข้อมูลซ้ำ
     const [existingSubjects]: any = await connection.execute('SELECT subject_id, subject_code, course_id FROM subject');
     const subjectMap: Map<string, number> = new Map(
       (existingSubjects as any[]).map((s: any) => [`${String(s.subject_code).trim()}-${s.course_id}`, Number(s.subject_id)])
     );
-    // =================================================
 
     const [courseRows]: any = await connection.execute('SELECT course_id, name_course_use FROM course');
     const courseMap: Map<string, number> = new Map(
@@ -85,10 +82,14 @@ export async function POST(req: NextRequest) {
       (planRows as any[]).map((r: any) => [`${r.course_id}-${String(r.plan_course).trim()}`, Number(r.course_plan_id)])
     );
 
-    const [categoryRows]: any = await connection.execute('SELECT subject_category_id, subject_group_name FROM subject_category');
-    const categoryByGroupName: Map<string, number> = new Map(
-      (categoryRows as any[]).map((r: any) => [String(r.subject_group_name).trim(), Number(r.subject_category_id)])
+    // =================== จุดที่แก้ไข #3 (เงื่อนไขใหม่) ===================
+    // 1. ดึง course_id มาพร้อมกับ category_name
+    const [categoryRows]: any = await connection.execute('SELECT subject_category_id, course_id, category_name FROM subject_category');
+    // 2. สร้าง Key แบบผสม (course_id-category_name)
+    const categoryMap: Map<string, number> = new Map(
+      (categoryRows as any[]).map((r: any) => [`${r.course_id}-${String(r.category_name).trim()}`, Number(r.subject_category_id)])
     );
+    // ====================================================================
 
     for (let i = 0; i < results.length; i++) {
         const row = results[i];
@@ -113,9 +114,13 @@ export async function POST(req: NextRequest) {
         const coursePlanId = coursePlanMap.get(coursePlanCompositeKey);
         if (!coursePlanId) throw new Error(`แถวที่ ${rowNumber}: ไม่พบแผนการเรียนชื่อ '${normalizedPlan}' สำหรับหลักสูตร '${courseName}' ในฐานข้อมูล`);
 
+        // =================== จุดที่แก้ไข #3 (เงื่อนไขใหม่) ===================
         const categoryGroup = String(row['กลุ่มของวิชาตามหลักสูตร'] || '').trim();
-        const subjectCategoryId = categoryByGroupName.get(categoryGroup);
-        if (!subjectCategoryId) throw new Error(`แถวที่ ${rowNumber}: ไม่พบกลุ่มวิชาชื่อ '${categoryGroup}' ในฐานข้อมูล`);
+        // 3. ใช้ Key แบบผสมในการค้นหา subject_category_id
+        const categoryCompositeKey = `${courseId}-${categoryGroup}`;
+        const subjectCategoryId = categoryMap.get(categoryCompositeKey);
+        if (!subjectCategoryId) throw new Error(`แถวที่ ${rowNumber}: ไม่พบกลุ่มวิชาชื่อ '${categoryGroup}' สำหรับหลักสูตร '${courseName}' ในฐานข้อมูล`);
+        // ====================================================================
 
         const subjectCode = String(row['รหัสวิชา'] || '').replace(/^'/, '');
         if (!subjectCode) throw new Error(`แถวที่ ${rowNumber}: ข้อมูลในคอลัมน์ 'รหัสวิชา' ว่างเปล่า`);
@@ -136,31 +141,28 @@ export async function POST(req: NextRequest) {
 
         let subjectId: number;
 
-        // =================== จุดที่แก้ไข ===================
-        // 2. สร้าง key จาก subjectCode และ courseId เพื่อเช็คข้อมูลซ้ำ
         const compositeKey = `${subjectCode}-${courseId}`;
         if (subjectMap.has(compositeKey)) {
-            // ถ้ามีอยู่แล้ว (วิชารหัสนี้ในหลักสูตรนี้) ให้ใช้ subject_id เดิม
             subjectId = subjectMap.get(compositeKey)!;
         } else {
-            // ถ้ายังไม่มี ให้เพิ่มข้อมูลวิชาใหม่
             const subCreditKey = `${credit}-${lectureHours}-${labHours}-${selfHours}`;
             const subCreditId = subCreditMap.get(subCreditKey);
 
             if (!subCreditId) {
                 throw new Error(`แถวที่ ${rowNumber}: ไม่พบ sub_credit_id สำหรับการกำหนดค่า หน่วยกิต(${credit}), บรรยาย(${lectureHours}), ปฏิบัติ(${labHours}), เรียนรู้เอง(${selfHours})`);
             }
-
+            
+            // =================== จุดที่แก้ไข #1 ===================
+            // นำ credit ออกจากคำสั่ง INSERT
             const [subjectResult]: any = await connection.execute(
-                `INSERT INTO subject (course_id, subject_type_id, subject_category_id, sub_credit_id, subject_code, name_subject_thai, name_subject_eng, credit) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [courseId, subjectTypeId, subjectCategoryId, subCreditId, subjectCode, row['ชื่อวิชา(ภาษาไทย)'], row['ชื่อวิชา(ภาษาอังกฤษ)'], credit]
+                `INSERT INTO subject (course_id, subject_type_id, subject_category_id, sub_credit_id, subject_code, name_subject_thai, name_subject_eng) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [courseId, subjectTypeId, subjectCategoryId, subCreditId, subjectCode, row['ชื่อวิชา(ภาษาไทย)'], row['ชื่อวิชา(ภาษาอังกฤษ)']]
             );
+            // ======================================================
             
             subjectId = subjectResult.insertId;
-            // 3. เพิ่มข้อมูลใหม่ลงใน map ด้วย key แบบผสม เพื่อป้องกันการเพิ่มซ้ำจากในไฟล์เดียวกัน
             subjectMap.set(compositeKey, subjectId);
         }
-        // =================================================
 
         const [existingLink]: any = await connection.execute(
             'SELECT subject_course_id FROM subject_course WHERE subject_id = ? AND course_plan_id = ?',
@@ -168,10 +170,13 @@ export async function POST(req: NextRequest) {
         );
 
         if (existingLink.length === 0) {
+            // =================== จุดที่แก้ไข #2 ===================
+            // เปลี่ยนชื่อคอลัมน์เป็น part_year และ std_term
             await connection.execute(
-                `INSERT INTO subject_course (subject_id, course_plan_id, study_year, study_term) VALUES (?, ?, ?, ?)`,
+                `INSERT INTO subject_course (subject_id, course_plan_id, part_year, std_term) VALUES (?, ?, ?, ?)`,
                 [subjectId, coursePlanId, studyYear, term]
             );
+            // ======================================================
         }
     }
 
