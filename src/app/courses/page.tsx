@@ -35,20 +35,12 @@ interface CourseDataType {
 name_course_use: string;
 plan_course: string;
 total_credit: number;
-general_subject_credit: number;
-specific_subject_credit: number;
-free_subject_credit: number;
-core_subject_credit: number;
-special_subject_credit: number;
-select_subject_credit: number;
-happy_subject_credit: number;
-entrepreneurship_subject_credit: number;
-language_subject_credit: number;
-people_subject_credit: number;
-aesthetics_subject_credit: number;
 internship_hours: number;
 credit_intern: number;
-
+}
+interface DetailDataType {
+  title: string;
+  credit: number;
 }
 
 const App: React.FC = () => {
@@ -98,18 +90,18 @@ const App: React.FC = () => {
 
  { title: 'ชื่อหลักสูตร (ไทย)', dataIndex: 'name_course_use', fixed: true, width: 200 },
 { title: 'แผนการเรียน', dataIndex: 'plan_course', width: 150, fixed: true },
-{ title: 'หน่วยกิตรวม', dataIndex: 'total_credit', width: 120 },
-{ title: 'หมวดวิชาศึกษาทั่วไป', dataIndex: 'general_subject_credit', width: 150 },
-{ title: 'หมวดวิชาเฉพาะ', dataIndex: 'specific_subject_credit', width: 150 },
-{ title: 'หมวดวิชาเลือกเสรี', dataIndex: 'free_subject_credit', width: 150 },
-{ title: 'วิชาแกน', dataIndex: 'core_subject_credit', width: 120 },
-{ title: 'วิชาเฉพาะด้าน', dataIndex: 'special_subject_credit', width: 150 },
-{ title: 'วิชาเลือก', dataIndex: 'select_subject_credit', width: 120 },
-{ title: 'กลุ่มสาระอยู่ดีมีสุข', dataIndex: 'happy_subject_credit', width: 180 },
-{ title: 'กลุ่มสาระศาสตร์แห่งผู้ประกอบการ', dataIndex: 'entrepreneurship_subject_credit', width: 220 },
-{ title: 'กลุ่มสาระภาษาและการสื่อสาร', dataIndex: 'language_subject_credit', width: 220 },
-{ title: 'กลุ่มสาระพลเมืองดี', dataIndex: 'people_subject_credit', width: 180 },
-{ title: 'กลุ่มสาระสุนทรียศาสตร์', dataIndex: 'aesthetics_subject_credit', width: 180 },
+{ title: 'หน่วยกิตรวม', dataIndex: 'total_credit', width: 120 }    ,
+// { title: 'หมวดวิชาศึกษาทั่วไป', dataIndex: 'general_subject_credit', width: 150 },
+// { title: 'หมวดวิชาเฉพาะ', dataIndex: 'specific_subject_credit', width: 150 },
+// { title: 'หมวดวิชาเลือกเสรี', dataIndex: 'free_subject_credit', width: 150 },
+// { title: 'วิชาแกน', dataIndex: 'core_subject_credit', width: 120 },
+// { title: 'วิชาเฉพาะด้าน', dataIndex: 'special_subject_credit', width: 150 },
+// { title: 'วิชาเลือก', dataIndex: 'select_subject_credit', width: 120 },
+// { title: 'กลุ่มสาระอยู่ดีมีสุข', dataIndex: 'happy_subject_credit', width: 180 },
+// { title: 'กลุ่มสาระศาสตร์แห่งผู้ประกอบการ', dataIndex: 'entrepreneurship_subject_credit', width: 220 },
+// { title: 'กลุ่มสาระภาษาและการสื่อสาร', dataIndex: 'language_subject_credit', width: 220 },
+// { title: 'กลุ่มสาระพลเมืองดี', dataIndex: 'people_subject_credit', width: 180 },
+// { title: 'กลุ่มสาระสุนทรียศาสตร์', dataIndex: 'aesthetics_subject_credit', width: 180 },
 { title: 'ชั่วโมงฝึกงาน', dataIndex: 'internship_hours', width: 150 },
 { title: 'หน่วยกิตฝึกงาน', dataIndex: 'credit_intern', width: 150 },
   {
@@ -153,6 +145,63 @@ const App: React.FC = () => {
 
     fetchData();
   }, []);
+
+
+  const ExpandedContent: React.FC<{ courseId: number }> = ({ courseId }) => {
+  const [details, setDetails] = useState<DetailDataType[]>([]);
+  const [detailLoading, setDetailLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDetails = async () => {
+      try {
+        setDetailLoading(true);
+        // **!!! เปลี่ยน API Endpoint ตรงนี้ให้ตรงกับ Backend ของคุณ !!!**
+        const response = await fetch(`/api/course/creditDetail?id=${courseId}`);
+        const data = await response.json();
+
+        // แปลง Object ที่ได้จาก API ให้เป็น Array เพื่อใช้กับ Table ย่อย
+        const formattedData: DetailDataType[] = [
+          { title: 'หมวดวิชาศึกษาทั่วไป', credit: data.general_subject_credit },
+          { title: 'หมวดวิชาเฉพาะ', credit: data.specific_subject_credit },
+          { title: 'หมวดวิชาเลือกเสรี', credit: data.free_subject_credit },
+          { title: 'วิชาแกน', credit: data.core_subject_credit },
+          // ... เพิ่ม Category อื่นๆ ตามที่ API ส่งมา
+        ].filter(item => item.credit != null); // กรองเฉพาะรายการที่มีข้อมูล
+
+        setDetails(formattedData);
+      } catch (error) {
+        console.error("Failed to fetch course details:", error);
+        message.error('ไม่สามารถโหลดรายละเอียดหน่วยกิตได้');
+      } finally {
+        setDetailLoading(false);
+      }
+    };
+
+    fetchDetails();
+  }, [courseId]);
+
+  const detailColumns: TableColumnsType<DetailDataType> = [
+    { title: 'หมวดวิชา/กลุ่มสาระ', dataIndex: 'title', width: 300 },
+    { title: 'หน่วยกิต', dataIndex: 'credit', width: 100 },
+  ];
+
+
+  return (
+    <div style={{ padding: '16px', background: '#fafafa' }}>
+      <p style={{ fontWeight: 'bold' }}>รายละเอียดหน่วยกิตย่อย</p>
+      <Table
+        columns={detailColumns}
+        dataSource={details.map((item, index) => ({ ...item, key: index }))}
+        pagination={false}
+        loading={detailLoading}
+        size="small"
+        bordered
+      />
+    </div>
+  );
+};
+
+
   return (
     <Flex vertical gap="small">
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -164,8 +213,16 @@ const App: React.FC = () => {
         columns={fixedColumns}
         dataSource={dataSource}
         pagination={{ pageSize: 10 }} // เพิ่ม Pagination เพื่อความสวยงาม
-        scroll={{ x: 2500}} // ปรับ scroll x ให้กว้างขึ้น
+        scroll={{ x: 1500}} // ปรับ scroll x ให้กว้างขึ้น
         bordered
+
+        expandable={{
+          expandedRowRender: (record) => (
+            <ExpandedContent courseId={record.course_plan_id} />
+          ),
+          rowExpandable: (record) => record.total_credit !== 0, // กำหนดเงื่อนไขการขยายถ้าต้องการ
+        }}
+
       />
     </Flex>
   );

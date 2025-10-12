@@ -4,17 +4,7 @@ import { PoolConnection } from 'mysql2/promise';
 
 /**
  * GET: ดึงข้อมูลหลักสูตรทั้งหมดที่ is_visible = 1
- */
-export async function GET() {
-  try {
-    const connection = await pool.getConnection();
-    const [rows] = await connection.query(
-      `SELECT 
-        cp.course_plan_id,
-        c.name_course_use,
-        cp.plan_course,
-        cp.total_credit,
-        cp.general_subject_credit,
+ *  cp.general_subject_credit,
         cp.specific_subject_credit,
         cp.free_subject_credit,
         cp.core_subject_credit,
@@ -25,6 +15,16 @@ export async function GET() {
         cp.language_subject_credit,
         cp.people_subject_credit,
         cp.aesthetics_subject_credit,
+ */
+export async function GET() {
+  try {
+    const connection = await pool.getConnection();
+    const [rows] = await connection.query(
+      `SELECT 
+        cp.course_plan_id,
+        c.name_course_use,
+        cp.plan_course,
+        cp.total_credit,
         cp.internship_hours,
         cp.credit_intern 
       FROM course_plan cp
