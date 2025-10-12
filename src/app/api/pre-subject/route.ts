@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const subjectId = Number(body.subjectId);
@@ -46,7 +47,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // ---- START: โค้ดที่แก้ไข ----
     // ตรวจสอบว่ารายวิชามีอยู่จริงในฐานข้อมูลหรือไม่
     const [subjects]: any = await db.execute(
       'SELECT subject_id FROM subject WHERE subject_id IN (?, ?)',
@@ -57,7 +57,6 @@ export async function POST(req: NextRequest) {
     if (!subjects || subjects.length !== 2) {
       return NextResponse.json({ message: 'ไม่พบรายวิชาหลักหรือรายวิชาที่ต้องเรียนก่อนในฐานข้อมูล' }, { status: 404 });
     }
-    // ---- END: โค้ดที่แก้ไข ----
 
     // กันซ้ำแบบ exact pair (subject_id ตรงกันทั้งคู่)
     const [dup]: any = await db.execute(
@@ -73,7 +72,6 @@ export async function POST(req: NextRequest) {
       'SELECT subject_code FROM subject WHERE subject_id = ? LIMIT 1',
       [previousSubjectId]
     );
-    // ไม่ต้องเช็ค prevInfo.length เพราะการเช็ค subjects.length ด้านบนครอบคลุมแล้ว
     const prevCode = prevInfo[0].subject_code;
 
     const [dupByCode]: any = await db.execute(
@@ -96,7 +94,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ message: 'บันทึกความสัมพันธ์สำเร็จ' }, { status: 201 });
   } catch (error: any) {
-    console.error('Error creating prerequisite:', error); // เพิ่ม logging เพื่อ debug
+    console.error('Error creating prerequisite:', error); 
     return NextResponse.json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์', error: error.message }, { status: 500 });
   }
 }
@@ -114,37 +112,32 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'ห้ามเชื่อมรายวิชากับตัวเอง' }, { status: 400 });
     }
 
-    // ---- START: โค้ดที่แก้ไข ----
     // ตรวจสอบว่ารายวิชามีอยู่จริง และดึง course_id มาเปรียบเทียบ
     const [subjects]: any = await db.execute(
       'SELECT subject_id, course_id FROM subject WHERE subject_id IN (?, ?)',
       [subjectId, previousSubjectId]
     );
 
-    // ตรวจสอบว่าพบรายวิชาครบทั้ง 2 ตัวหรือไม่
     if (!subjects || subjects.length !== 2) {
       return NextResponse.json({ message: 'ไม่พบรายวิชาหลักหรือรายวิชาที่ต้องเรียนก่อนในฐานข้อมูล' }, { status: 404 });
     }
 
-    // เปรียบเทียบ course_id ของทั้งสองรายวิชา
     const mainSubjectCourseId = subjects.find((s: any) => s.subject_id === subjectId).course_id;
     const prevSubjectCourseId = subjects.find((s: any) => s.subject_id === previousSubjectId).course_id;
 
     if (mainSubjectCourseId !== prevSubjectCourseId) {
       return NextResponse.json({ message: 'ไม่สามารถเชื่อมวิชากับรายวิชาที่อยู่คนละหลักสูตรได้' }, { status: 400 });
     }
-    // ---- END: โค้ดที่แก้ไข ----
 
     const [dup]: any = await db.execute(
       'SELECT pre_subject_id FROM pre_subject WHERE subject_id = ? AND previous_subject_id = ? AND pre_subject_id <> ? LIMIT 1',
       [subjectId, previousSubjectId, preSubjectId]
     );
     if (dup && dup.length > 0) {
-      // ---- แก้ไข status จาก 200 เป็น 409 ----
       return NextResponse.json({ message: 'มีความสัมพันธ์นี้อยู่แล้ว' }, { status: 409 });
     }
 
-    // กันซ้ำแบบ รหัสวิชา + หลักสูตร ของวิชาที่ต้องเรียนก่อน (แม้จะเป็นคนละ subject_id)
+    // กันซ้ำแบบ รหัสวิชา + หลักสูตร ของวิชาที่ต้องเรียนก่อน
     const [prevInfo]: any = await db.execute(
       'SELECT subject_code, course_id FROM subject WHERE subject_id = ? LIMIT 1',
       [previousSubjectId]
