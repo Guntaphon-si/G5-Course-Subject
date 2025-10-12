@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import db from "../../../../../lib/db";
 
+// Helper function to create subject category
+async function createSubjectCategory(conn: any, courseId: number, categoryName: string, categoryLevel: number, masterCategory: number | null) {
+  const [result]: any = await conn.query(
+    `INSERT INTO subject_category (course_id, category_name, category_level, master_category) 
+     VALUES (?, ?, ?, ?)`,
+    [courseId, categoryName, categoryLevel, masterCategory]
+  );
+  return result.insertId;
+}
+
 interface CourseData {
   name_course_th: string;
   name_course_use?: string;
@@ -10,7 +20,7 @@ interface CourseData {
   name_initials_degree_th?: string;
   name_initials_degree_eng?: string;
   department_id: number;
-  selected_categories?: string[];
+  selected_categories?: number[];
 }
 
 export async function POST(req: Request) {
@@ -38,106 +48,160 @@ export async function POST(req: Request) {
         data.department_id,
       ]
     );
-
+    console.log("Inserted course with ID:", courseResult.insertId);
     const courseId = courseResult.insertId;
 
-    // 3. บันทึกโครงสร้างหลักสูตรที่เลือก (ถ้ามี)
+    // 3. สร้างโครงสร้างหลักสูตรในตาราง subject_category (ถ้ามีการเลือกหมวดวิชา)
     if (data.selected_categories && data.selected_categories.length > 0) {
-      // สร้างตาราง course_curriculum_structure ถ้ายังไม่มี
-      await conn.query(`
-        CREATE TABLE IF NOT EXISTS course_curriculum_structure (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          course_id INT,
-          structure_type VARCHAR(100),
-          structure_name VARCHAR(255),
-          credit_hours VARCHAR(100),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (course_id) REFERENCES course(course_id)
-        )
-      `);
+      // สร้างตาราง course_subject_category ถ้ายังไม่มี
+    //   await conn.query(`
+    //     CREATE TABLE IF NOT EXISTS course_subject_category (
+    //       id INT AUTO_INCREMENT PRIMARY KEY,
+    //       course_id INT,
+    //       subject_category_id INT,
+    //       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    //       FOREIGN KEY (course_id) REFERENCES course(course_id),
+    //       FOREIGN KEY (subject_category_id) REFERENCES subject_category(subject_category_id)
+    //     )
+    //   `);
 
-      // บันทึกโครงสร้างที่เลือก
-      for (const structureType of data.selected_categories) {
-        let structureName = '';
-        let creditHours = '';
+      // สร้างโครงสร้างหลักสูตรตามลำดับชั้น
+      let generalEducationId = null;
+      let specificSubjectId = null;
+      let freeElectiveId = null;
+      let specializedSubjectId = null;
 
-        // กำหนดชื่อและหน่วยกิตตามประเภท
-        switch (structureType) {
-          case 'general_education':
-            structureName = 'หมวดวิชาศึกษาทั่วไป';
-            creditHours = 'ไม่น้อยกว่า 30 หน่วยกิต';
+      // Level 1: สร้างหมวดวิชาหลัก
+      for (const categoryId of data.selected_categories) {
+        let categoryName = '';
+        let categoryLevel = 1;
+        let masterCategory = null;
+
+        switch (categoryId) {
+          case 1: // หมวดวิชาศึกษาทั่วไป
+            categoryName = 'หมวดวิชาศึกษาทั่วไป';
+            generalEducationId = await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
             break;
-          case 'happy_subject':
-            structureName = 'กลุ่มสาระอยู่ดีมีสุข';
-            creditHours = 'ไม่น้อยกว่า 5 หน่วยกิต';
+          case 2: // หมวดวิชาเฉพาะ
+            categoryName = 'หมวดวิชาเฉพาะ';
+            specificSubjectId = await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
             break;
-          case 'entrepreneurship_subject':
-            structureName = 'กลุ่มสาระศาสตร์แห่งผู้ประกอบการ';
-            creditHours = 'ไม่น้อยกว่า 6 หน่วยกิต';
-            break;
-          case 'language_subject':
-            structureName = 'กลุ่มสาระภาษากับการสื่อสาร';
-            creditHours = '13 หน่วยกิต';
-            break;
-          case 'people_subject':
-            structureName = 'กลุ่มสาระพลเมืองไทยและพลเมืองโลก';
-            creditHours = 'ไม่น้อยกว่า 3 หน่วยกิต';
-            break;
-          case 'aesthetics_subject':
-            structureName = 'กลุ่มสาระสุนทรียศาสตร์';
-            creditHours = 'ไม่น้อยกว่า 3 หน่วยกิต';
-            break;
-          case 'specific_subject':
-            structureName = 'หมวดวิชาเฉพาะ';
-            creditHours = 'ไม่น้อยกว่า 104 หน่วยกิต';
-            break;
-          case 'core_subject':
-            structureName = 'วิชาแกน';
-            creditHours = '30 หน่วยกิต';
-            break;
-          case 'specialized_subject':
-            structureName = 'วิชาเฉพาะด้าน';
-            creditHours = '55 หน่วยกิต';
-            break;
-          case 'hardware_architecture':
-            structureName = 'กลุ่มฮาร์ดแวร์และสถาปัตยกรรมคอมพิวเตอร์';
-            creditHours = '18 หน่วยกิต';
-            break;
-          case 'system_infrastructure':
-            structureName = 'กลุ่มโครงสร้างพื้นฐานของระบบ';
-            creditHours = '19 หน่วยกิต';
-            break;
-          case 'software_technology':
-            structureName = 'กลุ่มเทคโนโลยีและวิธีการทางซอฟต์แวร์';
-            creditHours = '14 หน่วยกิต';
-            break;
-          case 'applied_technology':
-            structureName = 'กลุ่มเทคโนโลยีเพื่องานประยุกต์';
-            creditHours = '3 หน่วยกิต';
-            break;
-          case 'independent_study':
-            structureName = 'กลุ่มการค้นคว้าอิสระ';
-            creditHours = '1 หน่วยกิต';
-            break;
-          case 'elective_subject':
-            structureName = 'วิชาเลือก';
-            creditHours = 'ไม่น้อยกว่า 19 หน่วยกิต';
-            break;
-          case 'free_elective':
-            structureName = 'หมวดวิชาเลือกเสรี';
-            creditHours = 'ไม่น้อยกว่า 6 หน่วยกิต';
-            break;
-          case 'internship':
-            structureName = 'หมวดการฝึกงาน';
-            creditHours = 'ไม่น้อยกว่า 240 ชั่วโมง';
+          case 3: // หมวดวิชาเลือกเสรี
+            categoryName = 'หมวดวิชาเลือกเสรี';
+            freeElectiveId = await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
             break;
         }
+      }
 
-        await conn.query(
-          `INSERT INTO course_curriculum_structure (course_id, structure_type, structure_name, credit_hours) 
-           VALUES (?, ?, ?, ?)`,
-          [courseId, structureType, structureName, creditHours]
-        );
+      // Level 2: สร้างหมวดวิชาย่อย
+      for (const categoryId of data.selected_categories) {
+        let categoryName = '';
+        let categoryLevel = 2;
+        let masterCategory = null;
+
+        switch (categoryId) {
+          case 4: // กลุ่มสาระอยู่ดีมีสุข
+            if (generalEducationId) {
+              categoryName = 'กลุ่มสาระอยู่ดีมีสุข';
+              masterCategory = generalEducationId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 5: // กลุ่มสาระศาสตร์แห่งผู้ประกอบการ
+            if (generalEducationId) {
+              categoryName = 'กลุ่มสาระศาสตร์แห่งผู้ประกอบการ';
+              masterCategory = generalEducationId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 6: // กลุ่มสาระภาษากับการสื่อสาร
+            if (generalEducationId) {
+              categoryName = 'กลุ่มสาระภาษากับการสื่อสาร';
+              masterCategory = generalEducationId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 7: // กลุ่มสาระพลเมืองไทยและพลเมืองโลก
+            if (generalEducationId) {
+              categoryName = 'กลุ่มสาระพลเมืองไทยและพลเมืองโลก';
+              masterCategory = generalEducationId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 8: // กลุ่มสาระสุนทรียศาสตร์
+            if (generalEducationId) {
+              categoryName = 'กลุ่มสาระสุนทรียศาสตร์';
+              masterCategory = generalEducationId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 9: // วิชาแกน
+            if (specificSubjectId) {
+              categoryName = 'วิชาแกน';
+              masterCategory = specificSubjectId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 10: // วิชาเฉพาะด้าน
+            if (specificSubjectId) {
+              categoryName = 'วิชาเฉพาะด้าน';
+              masterCategory = specificSubjectId;
+              specializedSubjectId = await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 11: // วิชาเลือก
+            if (specificSubjectId) {
+              categoryName = 'วิชาเลือก';
+              masterCategory = specificSubjectId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+        }
+      }
+
+      // Level 3: สร้างหมวดวิชาละเอียด
+      for (const categoryId of data.selected_categories) {
+        let categoryName = '';
+        let categoryLevel = 3;
+        let masterCategory = null;
+
+        switch (categoryId) {
+          case 12: // กลุ่มฮาร์ดแวร์และสถาปัตยกรรมคอมพิวเตอร์
+            if (specializedSubjectId) {
+              categoryName = 'กลุ่มฮาร์ดแวร์และสถาปัตยกรรมคอมพิวเตอร์';
+              masterCategory = specializedSubjectId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 13: // กลุ่มโครงสร้างพื้นฐานของระบบ
+            if (specializedSubjectId) {
+              categoryName = 'กลุ่มโครงสร้างพื้นฐานของระบบ';
+              masterCategory = specializedSubjectId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 14: // กลุ่มเทคโนโลยีและวิธีการทางซอฟต์แวร์
+            if (specializedSubjectId) {
+              categoryName = 'กลุ่มเทคโนโลยีและวิธีการทางซอฟต์แวร์';
+              masterCategory = specializedSubjectId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 15: // กลุ่มเทคโนโลยีเพื่องานประยุกต์
+            if (specializedSubjectId) {
+              categoryName = 'กลุ่มเทคโนโลยีเพื่องานประยุกต์';
+              masterCategory = specializedSubjectId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+          case 16: // กลุ่มการค้นคว้าอิสระ
+            if (specializedSubjectId) {
+              categoryName = 'กลุ่มการค้นคว้าอิสระ';
+              masterCategory = specializedSubjectId;
+              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
+            }
+            break;
+        }
       }
     }
 

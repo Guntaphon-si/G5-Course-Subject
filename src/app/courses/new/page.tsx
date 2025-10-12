@@ -36,6 +36,14 @@ interface DepartmentFromApi {
   dept_alias_th?: string;
 }
 
+interface SubjectCategory {
+  subject_category_id: number;
+  category_name: string;
+  category_level: number;
+  master_category: number | null;
+  course_id: number;
+}
+
 
 export default function AddCoursePage() {
   const { Title } = Typography;
@@ -44,6 +52,7 @@ export default function AddCoursePage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [department, setDepartment] = useState<DepartmentFromApi[]>([]);
+  const [subjectCategories, setSubjectCategories] = useState<SubjectCategory[]>([]);
 
   useEffect(() => {
     setLoading(true);
@@ -67,6 +76,79 @@ export default function AddCoursePage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    fetch("/api/subject-category/all")
+      .then((res) => {
+        if (!res.ok)
+          throw new Error("ไม่สามารถดึงข้อมูลหมวดวิชาได้จากเซิร์ฟเวอร์");
+        return res.json();
+      })
+      .then((data) => {
+        if (data.items && Array.isArray(data.items)) {
+          setSubjectCategories(data.items);
+        } else {
+          message.error("รูปแบบข้อมูลหมวดวิชาที่ได้รับไม่ถูกต้อง");
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        message.error(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูลหมวดวิชา");
+      });
+  }, []);
+
+  const renderSubjectCategories = () => {
+    // กรองข้อมูลตาม level และลบข้อมูลซ้ำโดยใช้ subject_category_id
+    const uniqueCategories = subjectCategories.reduce((acc, cat) => {
+      if (!acc.find(item => item.subject_category_id === cat.subject_category_id)) {
+        acc.push(cat);
+      }
+      return acc;
+    }, [] as SubjectCategory[]);
+
+    const level1Categories = uniqueCategories.filter(cat => cat.category_level === 1);
+    const level2Categories = uniqueCategories.filter(cat => cat.category_level === 2);
+    const level3Categories = uniqueCategories.filter(cat => cat.category_level === 3);
+
+    return level1Categories.map(level1 => {
+      const level2Children = level2Categories.filter(cat => cat.master_category === level1.subject_category_id);
+      
+      return (
+        <div key={level1.subject_category_id} style={{ marginBottom: 16 }}>
+          <Checkbox value={level1.subject_category_id}>
+            <strong>{level1.category_name}</strong>
+          </Checkbox>
+          
+          {level2Children.length > 0 && (
+            <div style={{ marginLeft: 24, marginTop: 8 }}>
+              {level2Children.map(level2 => {
+                const level3Children = level3Categories.filter(cat => cat.master_category === level2.subject_category_id);
+                
+                return (
+                  <div key={level2.subject_category_id} style={{ marginBottom: 8 }}>
+                    <Checkbox value={level2.subject_category_id}>
+                      • {level2.category_name}
+                    </Checkbox>
+                    
+                    {level3Children.length > 0 && (
+                      <div style={{ marginLeft: 24, marginTop: 4 }}>
+                        {level3Children.map(level3 => (
+                          <div key={level3.subject_category_id} style={{ marginBottom: 4 }}>
+                            <Checkbox value={level3.subject_category_id}>
+                              - {level3.category_name}
+                            </Checkbox>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
 
   const onFinish = async (values: CourseData) => {
     setSubmitting(true);
@@ -215,86 +297,7 @@ export default function AddCoursePage() {
             <Form.Item name="selected_categories">
               <Checkbox.Group>
                 <Space direction="vertical" style={{ width: '100%' }}>
-                  
-                  {/* 1. หมวดวิชาศึกษาทั่วไป */}
-                  <div style={{ marginLeft: 0 }}>
-                    <Checkbox value="general_education">
-                      <strong>1. หมวดวิชาศึกษาทั่วไป</strong> (ไม่น้อยกว่า 30 หน่วยกิต)
-                    </Checkbox>
-                    <div style={{ marginLeft: 24, marginTop: 8 }}>
-                      <Space direction="vertical" style={{ width: '100%' }}>
-                        <Checkbox value="happy_subject">
-                          • กลุ่มสาระอยู่ดีมีสุข (ไม่น้อยกว่า 5 หน่วยกิต)
-                        </Checkbox>
-                        <Checkbox value="entrepreneurship_subject">
-                          • กลุ่มสาระศาสตร์แห่งผู้ประกอบการ (ไม่น้อยกว่า 6 หน่วยกิต)
-                        </Checkbox>
-                        <Checkbox value="language_subject">
-                          • กลุ่มสาระภาษากับการสื่อสาร (13 หน่วยกิต)
-                        </Checkbox>
-                        <Checkbox value="people_subject">
-                          • กลุ่มสาระพลเมืองไทยและพลเมืองโลก (ไม่น้อยกว่า 3 หน่วยกิต)
-                        </Checkbox>
-                        <Checkbox value="aesthetics_subject">
-                          • กลุ่มสาระสุนทรียศาสตร์ (ไม่น้อยกว่า 3 หน่วยกิต)
-                        </Checkbox>
-                      </Space>
-                    </div>
-                  </div>
-
-                  {/* 2. หมวดวิชาเฉพาะ */}
-                  <div style={{ marginLeft: 0 }}>
-                    <Checkbox value="specific_subject">
-                      <strong>2. หมวดวิชาเฉพาะ</strong> (ไม่น้อยกว่า 104 หน่วยกิต)
-                    </Checkbox>
-                    <div style={{ marginLeft: 24, marginTop: 8 }}>
-                      <Space direction="vertical" style={{ width: '100%' }}>
-                        <Checkbox value="core_subject">
-                          • วิชาแกน (30 หน่วยกิต)
-                        </Checkbox>
-                        <Checkbox value="specialized_subject">
-                          • วิชาเฉพาะด้าน (55 หน่วยกิต)
-                        </Checkbox>
-                        <div style={{ marginLeft: 24, marginTop: 8 }}>
-                          <Space direction="vertical" style={{ width: '100%' }}>
-                            <Checkbox value="hardware_architecture">
-                              - กลุ่มฮาร์ดแวร์และสถาปัตยกรรมคอมพิวเตอร์ (18 หน่วยกิต)
-                            </Checkbox>
-                            <Checkbox value="system_infrastructure">
-                              - กลุ่มโครงสร้างพื้นฐานของระบบ (19 หน่วยกิต)
-                            </Checkbox>
-                            <Checkbox value="software_technology">
-                              - กลุ่มเทคโนโลยีและวิธีการทางซอฟต์แวร์ (14 หน่วยกิต)
-                            </Checkbox>
-                            <Checkbox value="applied_technology">
-                              - กลุ่มเทคโนโลยีเพื่องานประยุกต์ (3 หน่วยกิต)
-                            </Checkbox>
-                            <Checkbox value="independent_study">
-                              - กลุ่มการค้นคว้าอิสระ (1 หน่วยกิต)
-                            </Checkbox>
-                          </Space>
-                        </div>
-                        <Checkbox value="elective_subject">
-                          • วิชาเลือก (ไม่น้อยกว่า 19 หน่วยกิต)
-                        </Checkbox>
-                      </Space>
-                    </div>
-                  </div>
-
-                  {/* 3. หมวดวิชาเลือกเสรี */}
-                  <div style={{ marginLeft: 0 }}>
-                    <Checkbox value="free_elective">
-                      <strong>3. หมวดวิชาเลือกเสรี</strong> (ไม่น้อยกว่า 6 หน่วยกิต)
-                    </Checkbox>
-                  </div>
-
-                  {/* 4. หมวดการฝึกงาน */}
-                  <div style={{ marginLeft: 0 }}>
-                    <Checkbox value="internship">
-                      <strong>4. หมวดการฝึกงาน</strong> (ไม่น้อยกว่า 240 ชั่วโมง)
-                    </Checkbox>
-                  </div>
-
+                  {renderSubjectCategories()}
                 </Space>
               </Checkbox.Group>
             </Form.Item>
