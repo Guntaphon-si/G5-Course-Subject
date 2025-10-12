@@ -11,8 +11,8 @@ import {
   Space,
   Typography,
   message,
-  InputNumber,
   Divider,
+  Checkbox,
 } from "antd";
 import { useRouter } from "next/navigation";
 
@@ -26,29 +26,7 @@ interface CourseData {
   name_initials_degree_th?: string;
   name_initials_degree_eng?: string;
   department_id: number;
-  
-  // หมวดวิชาศึกษาทั่วไป
-  general_subject_credit?: number;
-  
-  // หมวดวิชาเฉพาะ
-  specific_subject_credit?: number;
-  core_subject_credit?: number;
-  special_subject_credit?: number;
-  select_subject_credit?: number;
-  
-  // กลุ่มสาระ (ในหมวดวิชาศึกษาทั่วไป)
-  happy_subject_credit?: number;
-  entrepreneurship_subject_credit?: number;
-  language_subject_credit?: number;
-  people_subject_credit?: number;
-  aesthetics_subject_credit?: number;
-  
-  // หมวดวิชาเลือกเสรี
-  free_subject_credit?: number;
-  
-  // ฝึกงาน
-  internship_hours?: number;
-  credit_intern?: number;
+  selected_categories?: string[];
 }
 
 interface DepartmentFromApi {
@@ -58,8 +36,9 @@ interface DepartmentFromApi {
   dept_alias_th?: string;
 }
 
+
 export default function AddCoursePage() {
-  const { Title, Text } = Typography;
+  const { Title } = Typography;
   const [form] = Form.useForm<CourseData>();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -88,6 +67,7 @@ export default function AddCoursePage() {
       .finally(() => setLoading(false));
   }, []);
 
+
   const onFinish = async (values: CourseData) => {
     setSubmitting(true);
     try {
@@ -105,8 +85,9 @@ export default function AddCoursePage() {
 
       message.success("บันทึกหลักสูตรสำเร็จ");
       router.push("/courses");
-    } catch (e: any) {
-      message.error(e.message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
+      message.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -207,9 +188,9 @@ export default function AddCoursePage() {
                     loading={loading}
                     showSearch
                     filterOption={(input, option) =>
-                      (option?.children as string)
+                      (option?.children as unknown as string)
                         ?.toLowerCase()
-                        .indexOf(input.toLowerCase()) >= 0
+                        .includes(input.toLowerCase()) ?? false
                     }
                   >
                     {department
@@ -225,234 +206,98 @@ export default function AddCoursePage() {
                   </Select>
                 </Form.Item>
               </Col>
-               <Col span={6}>
-                <Form.Item
-                  label="แผนการเรียน"
-                  name="plan_course"
-                  rules={[
-                    { required: true, message: "กรุณากรอกแผนการเรียน" },
-                  ]}
-                >
-                  <InputNumber
-                    min={1}
-                    placeholder="60"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={6}>
-                <Form.Item label="หน่วยกิตรวม" name="total_credit">
-                  <InputNumber
-                    min={0}
-                    placeholder="140"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
             </Row>
 
             <Divider />
 
-            {/* 3.1.1 หมวดวิชาศึกษาทั่วไป */}
-            <Title level={5}>3.1.1 หมวดวิชาศึกษาทั่วไป</Title>
-            <Row gutter={12}>
-              <Col span={8}>
-                <Form.Item
-                  label="หน่วยกิตขั้นต่ำ"
-                  name="general_subject_credit"
-                  extra={<Text type="secondary">ตัวอย่าง: 30 หน่วยกิต</Text>}
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="30"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+            {/* โครงสร้างหลักสูตร */}
+            <Title level={5}>3.1.2 โครงสร้างหลักสูตร</Title>
+            <Form.Item name="selected_categories">
+              <Checkbox.Group>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  
+                  {/* 1. หมวดวิชาศึกษาทั่วไป */}
+                  <div style={{ marginLeft: 0 }}>
+                    <Checkbox value="general_education">
+                      <strong>1. หมวดวิชาศึกษาทั่วไป</strong> (ไม่น้อยกว่า 30 หน่วยกิต)
+                    </Checkbox>
+                    <div style={{ marginLeft: 24, marginTop: 8 }}>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Checkbox value="happy_subject">
+                          • กลุ่มสาระอยู่ดีมีสุข (ไม่น้อยกว่า 5 หน่วยกิต)
+                        </Checkbox>
+                        <Checkbox value="entrepreneurship_subject">
+                          • กลุ่มสาระศาสตร์แห่งผู้ประกอบการ (ไม่น้อยกว่า 6 หน่วยกิต)
+                        </Checkbox>
+                        <Checkbox value="language_subject">
+                          • กลุ่มสาระภาษากับการสื่อสาร (13 หน่วยกิต)
+                        </Checkbox>
+                        <Checkbox value="people_subject">
+                          • กลุ่มสาระพลเมืองไทยและพลเมืองโลก (ไม่น้อยกว่า 3 หน่วยกิต)
+                        </Checkbox>
+                        <Checkbox value="aesthetics_subject">
+                          • กลุ่มสาระสุนทรียศาสตร์ (ไม่น้อยกว่า 3 หน่วยกิต)
+                        </Checkbox>
+                      </Space>
+                    </div>
+                  </div>
 
-            <Row gutter={12} style={{ marginLeft: 20 }}>
-              <Col span={24}>
-                <Text strong>กลุ่มสาระต่างๆ:</Text>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  label="กลุ่มสาระอยู่ดีมีสุข"
-                  name="happy_subject_credit"
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="5"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  label="กลุ่มสาระศาสตร์แห่งผู้ประกอบการ"
-                  name="entrepreneurship_subject_credit"
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="6"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  label="กลุ่มสาระภาษากับการสื่อสาร"
-                  name="language_subject_credit"
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="13"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  label="กลุ่มสาระพลเมืองไทยและพลเมืองโลก"
-                  name="people_subject_credit"
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="3"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  label="กลุ่มสาระสุนทรียศาสตร์"
-                  name="aesthetics_subject_credit"
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="3"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+                  {/* 2. หมวดวิชาเฉพาะ */}
+                  <div style={{ marginLeft: 0 }}>
+                    <Checkbox value="specific_subject">
+                      <strong>2. หมวดวิชาเฉพาะ</strong> (ไม่น้อยกว่า 104 หน่วยกิต)
+                    </Checkbox>
+                    <div style={{ marginLeft: 24, marginTop: 8 }}>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Checkbox value="core_subject">
+                          • วิชาแกน (30 หน่วยกิต)
+                        </Checkbox>
+                        <Checkbox value="specialized_subject">
+                          • วิชาเฉพาะด้าน (55 หน่วยกิต)
+                        </Checkbox>
+                        <div style={{ marginLeft: 24, marginTop: 8 }}>
+                          <Space direction="vertical" style={{ width: '100%' }}>
+                            <Checkbox value="hardware_architecture">
+                              - กลุ่มฮาร์ดแวร์และสถาปัตยกรรมคอมพิวเตอร์ (18 หน่วยกิต)
+                            </Checkbox>
+                            <Checkbox value="system_infrastructure">
+                              - กลุ่มโครงสร้างพื้นฐานของระบบ (19 หน่วยกิต)
+                            </Checkbox>
+                            <Checkbox value="software_technology">
+                              - กลุ่มเทคโนโลยีและวิธีการทางซอฟต์แวร์ (14 หน่วยกิต)
+                            </Checkbox>
+                            <Checkbox value="applied_technology">
+                              - กลุ่มเทคโนโลยีเพื่องานประยุกต์ (3 หน่วยกิต)
+                            </Checkbox>
+                            <Checkbox value="independent_study">
+                              - กลุ่มการค้นคว้าอิสระ (1 หน่วยกิต)
+                            </Checkbox>
+                          </Space>
+                        </div>
+                        <Checkbox value="elective_subject">
+                          • วิชาเลือก (ไม่น้อยกว่า 19 หน่วยกิต)
+                        </Checkbox>
+                      </Space>
+                    </div>
+                  </div>
 
-            <Divider />
+                  {/* 3. หมวดวิชาเลือกเสรี */}
+                  <div style={{ marginLeft: 0 }}>
+                    <Checkbox value="free_elective">
+                      <strong>3. หมวดวิชาเลือกเสรี</strong> (ไม่น้อยกว่า 6 หน่วยกิต)
+                    </Checkbox>
+                  </div>
 
-            {/* 3.1.2 หมวดวิชาเฉพาะ */}
-            <Title level={5}>3.1.2 หมวดวิชาเฉพาะ</Title>
-            <Row gutter={12}>
-              <Col span={8}>
-                <Form.Item
-                  label="หน่วยกิตขั้นต่ำรวม"
-                  name="specific_subject_credit"
-                  extra={<Text type="secondary">ตัวอย่าง: 104 หน่วยกิต</Text>}
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="104"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+                  {/* 4. หมวดการฝึกงาน */}
+                  <div style={{ marginLeft: 0 }}>
+                    <Checkbox value="internship">
+                      <strong>4. หมวดการฝึกงาน</strong> (ไม่น้อยกว่า 240 ชั่วโมง)
+                    </Checkbox>
+                  </div>
 
-            <Row gutter={12} style={{ marginLeft: 20 }}>
-              <Col span={24}>
-                <Text strong>1) หมวดวิชาเฉพาะบังคับ:</Text>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  label="- วิชาแกน"
-                  name="core_subject_credit"
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="30"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  label="- วิชาเฉพาะด้าน"
-                  name="special_subject_credit"
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="55"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={24}>
-                <Text strong>2) หมวดวิชาเลือก:</Text>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  label="- วิชาเลือก"
-                  name="select_subject_credit"
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="19"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Divider />
-
-            {/* 3) หมวดวิชาเลือกเสรี */}
-            <Title level={5}>3) หมวดวิชาเลือกเสรี</Title>
-            <Row gutter={12}>
-              <Col span={8}>
-                <Form.Item
-                  label="หน่วยกิตขั้นต่ำ"
-                  name="free_subject_credit"
-                  extra={<Text type="secondary">ตัวอย่าง: 6 หน่วยกิต</Text>}
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="6"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Divider />
-
-            {/* 4) หมวดการฝึกงาน */}
-            <Title level={5}>4) หมวดการฝึกงาน</Title>
-            <Row gutter={12}>
-              <Col span={8}>
-                <Form.Item
-                  label="ชั่วโมงฝึกงาน"
-                  name="internship_hours"
-                  extra={<Text type="secondary">ตัวอย่าง: 240 ชั่วโมง</Text>}
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="240"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  label="หน่วยกิตฝึกงาน"
-                  name="credit_intern"
-                >
-                  <InputNumber
-                    min={0}
-                    placeholder="0"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+                </Space>
+              </Checkbox.Group>
+            </Form.Item>
 
             <Divider />
 

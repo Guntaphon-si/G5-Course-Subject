@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import db from "../../../../../lib/db";
-import type { CourseData } from "@/types/course";
+
+interface CourseData {
+  name_course_th: string;
+  name_course_use?: string;
+  name_course_eng?: string;
+  name_full_degree_th?: string;
+  name_full_degree_eng?: string;
+  name_initials_degree_th?: string;
+  name_initials_degree_eng?: string;
+  department_id: number;
+  selected_categories?: string[];
+}
 
 export async function POST(req: Request) {
   const data = (await req.json()) as CourseData;
@@ -9,7 +20,7 @@ export async function POST(req: Request) {
   await conn.beginTransaction();
 
   try {
-    // 1️⃣ Insert into course
+    // Insert into course table only
     const [courseResult]: any = await conn.query(
       `INSERT INTO course 
       (name_course_th, name_course_use, name_course_eng,
@@ -30,95 +41,111 @@ export async function POST(req: Request) {
 
     const courseId = courseResult.insertId;
 
-    // 2️⃣ Insert into course_plan
-    const [planResult]: any = await conn.query(
-      `INSERT INTO course_plan 
-       (course_id, plan_course, credit_intern, total_credit, internship_hours)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        courseId,
-        data.plan_course ?? "แผนหลักสูตรทั่วไป",
-        data.credit_intern ?? 0,
-        data.total_credit ??
-          ((data.general_subject_credit ?? 0) +
-            (data.specific_subject_credit ?? 0) +
-            (data.free_subject_credit ?? 0)),
-        data.internship_hours ?? 0,
-      ]
-    );
+    // 3. บันทึกโครงสร้างหลักสูตรที่เลือก (ถ้ามี)
+    if (data.selected_categories && data.selected_categories.length > 0) {
+      // สร้างตาราง course_curriculum_structure ถ้ายังไม่มี
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS course_curriculum_structure (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          course_id INT,
+          structure_type VARCHAR(100),
+          structure_name VARCHAR(255),
+          credit_hours VARCHAR(100),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (course_id) REFERENCES course(course_id)
+        )
+      `);
 
-    const planId = planResult.insertId;
+      // บันทึกโครงสร้างที่เลือก
+      for (const structureType of data.selected_categories) {
+        let structureName = '';
+        let creditHours = '';
 
-    // 3️⃣ สร้าง Map สำหรับเก็บ id ของหมวดหลัก
-    const masterCategories: Record<string, number> = {};
+        // กำหนดชื่อและหน่วยกิตตามประเภท
+        switch (structureType) {
+          case 'general_education':
+            structureName = 'หมวดวิชาศึกษาทั่วไป';
+            creditHours = 'ไม่น้อยกว่า 30 หน่วยกิต';
+            break;
+          case 'happy_subject':
+            structureName = 'กลุ่มสาระอยู่ดีมีสุข';
+            creditHours = 'ไม่น้อยกว่า 5 หน่วยกิต';
+            break;
+          case 'entrepreneurship_subject':
+            structureName = 'กลุ่มสาระศาสตร์แห่งผู้ประกอบการ';
+            creditHours = 'ไม่น้อยกว่า 6 หน่วยกิต';
+            break;
+          case 'language_subject':
+            structureName = 'กลุ่มสาระภาษากับการสื่อสาร';
+            creditHours = '13 หน่วยกิต';
+            break;
+          case 'people_subject':
+            structureName = 'กลุ่มสาระพลเมืองไทยและพลเมืองโลก';
+            creditHours = 'ไม่น้อยกว่า 3 หน่วยกิต';
+            break;
+          case 'aesthetics_subject':
+            structureName = 'กลุ่มสาระสุนทรียศาสตร์';
+            creditHours = 'ไม่น้อยกว่า 3 หน่วยกิต';
+            break;
+          case 'specific_subject':
+            structureName = 'หมวดวิชาเฉพาะ';
+            creditHours = 'ไม่น้อยกว่า 104 หน่วยกิต';
+            break;
+          case 'core_subject':
+            structureName = 'วิชาแกน';
+            creditHours = '30 หน่วยกิต';
+            break;
+          case 'specialized_subject':
+            structureName = 'วิชาเฉพาะด้าน';
+            creditHours = '55 หน่วยกิต';
+            break;
+          case 'hardware_architecture':
+            structureName = 'กลุ่มฮาร์ดแวร์และสถาปัตยกรรมคอมพิวเตอร์';
+            creditHours = '18 หน่วยกิต';
+            break;
+          case 'system_infrastructure':
+            structureName = 'กลุ่มโครงสร้างพื้นฐานของระบบ';
+            creditHours = '19 หน่วยกิต';
+            break;
+          case 'software_technology':
+            structureName = 'กลุ่มเทคโนโลยีและวิธีการทางซอฟต์แวร์';
+            creditHours = '14 หน่วยกิต';
+            break;
+          case 'applied_technology':
+            structureName = 'กลุ่มเทคโนโลยีเพื่องานประยุกต์';
+            creditHours = '3 หน่วยกิต';
+            break;
+          case 'independent_study':
+            structureName = 'กลุ่มการค้นคว้าอิสระ';
+            creditHours = '1 หน่วยกิต';
+            break;
+          case 'elective_subject':
+            structureName = 'วิชาเลือก';
+            creditHours = 'ไม่น้อยกว่า 19 หน่วยกิต';
+            break;
+          case 'free_elective':
+            structureName = 'หมวดวิชาเลือกเสรี';
+            creditHours = 'ไม่น้อยกว่า 6 หน่วยกิต';
+            break;
+          case 'internship':
+            structureName = 'หมวดการฝึกงาน';
+            creditHours = 'ไม่น้อยกว่า 240 ชั่วโมง';
+            break;
+        }
 
-    // 4️⃣ เพิ่มหมวดหลักก่อน
-    const mainCats: [string, number | undefined][] = [
-      ["หมวดวิชาศึกษาทั่วไป", data.general_subject_credit],
-      ["หมวดวิชาเฉพาะ", data.specific_subject_credit],
-      ["หมวดวิชาเลือกเสรี", data.free_subject_credit],
-    ];
-
-    for (const [name, credit] of mainCats) {
-      if (!credit) continue;
-      const [mainCat]: any = await conn.query(
-        `INSERT INTO subject_category (course_id, category_level, category_name)
-         VALUES (?, 1, ?)`,
-        [courseId, name]
-      );
-      const catId = mainCat.insertId;
-      masterCategories[name] = catId;
-
-      // บันทึกหน่วยกิตหลัก
-      await conn.query(
-        `INSERT INTO credit_require (course_plan_id, subject_category_id, credit_require)
-         VALUES (?, ?, ?)`,
-        [planId, catId, credit]
-      );
+        await conn.query(
+          `INSERT INTO course_curriculum_structure (course_id, structure_type, structure_name, credit_hours) 
+           VALUES (?, ?, ?, ?)`,
+          [courseId, structureType, structureName, creditHours]
+        );
+      }
     }
 
-    // 5️⃣ กลุ่มย่อยและกลุ่มสาระ (มี master_category)
-    const subCategories: [string, number | undefined, string | null][] = [
-      // กลุ่มสาระ → หมวดวิชาศึกษาทั่วไป
-      ["กลุ่มสาระอยู่ดีมีสุข", data.happy_subject_credit, "หมวดวิชาศึกษาทั่วไป"],
-      ["กลุ่มสาระศาสตร์แห่งผู้ประกอบการ", data.entrepreneurship_subject_credit, "หมวดวิชาศึกษาทั่วไป"],
-      ["กลุ่มสาระภาษากับการสื่อสาร", data.language_subject_credit, "หมวดวิชาศึกษาทั่วไป"],
-      ["กลุ่มสาระพลเมืองไทยและพลเมืองโลก", data.people_subject_credit, "หมวดวิชาศึกษาทั่วไป"],
-      ["กลุ่มสาระสุนทรียศาสตร์", data.aesthetics_subject_credit, "หมวดวิชาศึกษาทั่วไป"],
-
-      // วิชาเฉพาะย่อย → หมวดวิชาเฉพาะ
-      ["วิชาแกน", data.core_subject_credit, "หมวดวิชาเฉพาะ"],
-      ["วิชาเฉพาะด้าน", data.special_subject_credit, "หมวดวิชาเฉพาะ"],
-      ["วิชาเลือก", data.select_subject_credit, "หมวดวิชาเฉพาะ"],
-    ];
-
-    for (const [name, credit, masterName] of subCategories) {
-      if (!credit) continue;
-
-      const master = masterName ? masterCategories[masterName] ?? null : null;
-
-      const [insSub]: any = await conn.query(
-        `INSERT INTO subject_category (course_id, category_level, category_name, master_category)
-         VALUES (?, 2, ?, ?)`,
-        [courseId, name, master]
-      );
-
-      const subId = insSub.insertId;
-
-      await conn.query(
-        `INSERT INTO credit_require (course_plan_id, subject_category_id, credit_require)
-         VALUES (?, ?, ?)`,
-        [planId, subId, credit]
-      );
-    }
-
-    // 6️⃣ Commit
     await conn.commit();
 
     return NextResponse.json({
       message: "✅ บันทึกหลักสูตรสำเร็จ",
       course_id: courseId,
-      plan_id: planId,
     });
   } catch (err: any) {
     await conn.rollback();
