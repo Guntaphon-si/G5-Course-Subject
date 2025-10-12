@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8005:3000"
+    environment:
+      - DB_HOST=10.35.144.38
+      - DB_PORT=3306
+      - DB_USER=dw_student
+      - DB_PASS=dw_student
+      - DB_NAME=DW-student

@@ -14,7 +14,7 @@ interface CourseData {
 }
 
 export async function POST(req: Request) {
-  const data = (await req.json()) as CourseData;
+  const data = (await req.json());
 
   const conn = await db.getConnection();
   await conn.beginTransaction();

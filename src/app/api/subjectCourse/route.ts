@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { RowDataPacket } from 'mysql2';
 import pool from '../../../../lib/db'; // ใช้ connection pool เดิมจาก src/lib/db.js
 
 interface Context {
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     const [rows] = await connection.query(sql_query, [course_plan_id]);
     connection.release();
 
-    const data_with_keys = rows.map((row: any) => ({
+    const data_with_keys = (rows as RowDataPacket[]).map((row: any) => ({
       ...row,
       key: row.subject_course_id
     }));
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest, context: Context) {
+export async function DELETE(request: NextRequest) {
   try {
     const { id: subject_course_id } = await request.json();
     console.log(`subject_course_id: ${subject_course_id}`);
