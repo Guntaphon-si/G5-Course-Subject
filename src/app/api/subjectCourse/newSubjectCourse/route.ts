@@ -1,100 +1,86 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '../../../../../lib/db';// ใช้ connection pool เดิมจาก src/lib/db.js
+import pool from '../../../../../lib/db'; // ใช้ connection pool เดิมจาก src/lib/db.js
 
 interface Context {
-    params: {
-        id: string; // ชื่อต้องตรงกับ [id] ในชื่อไฟล์/โฟลเดอร์
-    };
+  params: {
+    id: string; // ชื่อต้องตรงกับ [id] ในชื่อไฟล์/โฟลเดอร์
+  };
 }
 
 export interface CoursePlan {
-    coursePlanId: number;
-    planCourse: string;
+  course_plan_id: number;
+  plan_course: string;
 }
 
-/**
- * Interface สำหรับโครงสร้างข้อมูลวิชา (ตาราง Subject)
- */
 export interface Subject {
-    subjectId: number;
-    subjectCode: string;
-    nameSubjectThai: string;
+  subject_id: number;
+  subject_code: string;
+  name_subject_thai: string;
 }
 
-/**
- * Interface สำหรับข้อมูลที่ส่งกลับไปให้ Frontend (รวมข้อมูลที่ต้องการทั้งหมด)
- */
 export interface DropdownDataResponse {
-    coursePlans: CoursePlan[];
-    subjects: Subject[];
+  course_plans: CoursePlan[];
+  subjects: Subject[];
 }
 
 export async function GET(request: NextRequest) {
-    try {
-        // 1. เชื่อมต่อฐานข้อมูล
-        const connection = await pool.getConnection();
+  try {
+    const connection = await pool.getConnection();
 
-        // 2. กำหนด SQL Queries
-        const querySubject = `SELECT * FROM subject`;
-        const queryCoursePlan = `SELECT * FROM coursePlan`;
+    // ดึงข้อมูลจากตารางที่ใช้ชื่อ snake_case
+    const query_subject = `SELECT * FROM subject`;
+    const query_course_plan = `SELECT * FROM course_plan`;
 
-        // 3. รัน Queries พร้อมกัน
-        const [subjectRows]: [any[], any] = await connection.query(querySubject) as [any[], any];
-        const [coursePlanRows]: [any[], any] = await connection.query(queryCoursePlan) as [any[], any];
-        
-        // 4. ปล่อย Connection คืน
-        connection.release();
+    const [subject_rows]: [any[], any] = await connection.query(query_subject) as [any[], any];
+    const [course_plan_rows]: [any[], any] = await connection.query(query_course_plan) as [any[], any];
 
-        // 5. กำหนดข้อมูลคงที่ (Static Data) สำหรับ ปีการศึกษาและภาคเรียน
-        const staticStudyYears: number[] = [1, 2, 3, 4]; // ปี 1, 2, 3, 4
-        const staticTerms: number[] = [1, 2];          // เทอม 1, 2
+    connection.release();
 
-        // 6. รวมข้อมูลทั้งหมดสำหรับส่งกลับไปให้ Frontend
-        // Frontend จะรับ Object นี้และทำการ 'แยก' (Separation) ไปใช้กับ Dropdown ต่างๆ
-        const responseData = {
-            subjects: subjectRows,
-            coursePlans: coursePlanRows,
-            studyYears: staticStudyYears,
-            terms: staticTerms,
-        };
-        
-        // console.log("Data to be sent to Frontend:", responseData); // สำหรับ Debug
+    const static_study_years: number[] = [1, 2, 3, 4];
+    const static_terms: number[] = [1, 2];
 
-        return NextResponse.json(responseData);
+    const response_data = {
+      subjects: subject_rows,
+      course_plans: course_plan_rows,
+      study_years: static_study_years,
+      terms: static_terms,
+    };
 
-    } catch (error) {
-        console.error("Database Error:", error);
-        return NextResponse.json(
-            { message: "Internal Server Error during data fetch." },
-            { status: 500 }
-        );
-    }
+    return NextResponse.json(response_data);
+
+  } catch (error) {
+    console.error('Database Error:', error);
+    return NextResponse.json(
+      { message: 'Internal Server Error during data fetch.' },
+      { status: 500 }
+    );
+  }
 }
-
 
 export async function POST(request: NextRequest) {
   try {
-    
-    // 1. เชื่อมต่อฐานข้อมูล
     const connection = await pool.getConnection();
-    
-    // 2. อ่านข้อมูลจาก request body
-    const { coursePlanId, subjectId , studyYear, term} = await request.json();
 
-    // 3. สร้าง SQL Query สําหรับการบันทึกข้อมูล
-    const sql = `INSERT INTO subjectCourse (coursePlanId, subjectId, studyYear, term) VALUES (?, ?, ? , ?)`;
+    const { course_plan_id, subject_id, study_year, term } = await request.json();
 
-    // 4. รัน SQL Query
-    const [result] = await connection.query(sql, [coursePlanId, subjectId, studyYear, term]);
+    const sql = `
+      INSERT INTO subject_course (course_plan_id, subject_id, part_year, std_term)
+      VALUES (?, ?, ?, ?)
+    `;
 
-    // 5. ปล่อย Connection คืน
+    await connection.query(sql, [course_plan_id, subject_id, study_year, term]);
     connection.release();
 
-    // 6. ส่งสถานะความสำเร็จกลับไป
-    return NextResponse.json({ message: "Subject added successfully" }, { status: 200 });
+    return NextResponse.json(
+      { message: 'Subject added successfully' },
+      { status: 200 }
+    );
 
   } catch (error) {
-    console.error("Database Error:", error);
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    console.error('Database Error:', error);
+    return NextResponse.json(
+      { message: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }

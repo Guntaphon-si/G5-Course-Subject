@@ -14,10 +14,10 @@ interface ServerPageProps {
 
 export default async function App({ params }: ServerPageProps){
   const unwrappedParams = await params; 
-  const subjectCourseId = unwrappedParams.id;
+  const subject_course_id = unwrappedParams.id;
 
   return (
     // ส่งค่า ID ที่ถูกแกะแล้วลงไปเป็น Prop ธรรมดา
-    <CourseSubjectTable subjectCourseId={subjectCourseId} />
+    <CourseSubjectTable subject_course_id={subject_course_id} />
   );
 };

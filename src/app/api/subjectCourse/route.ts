@@ -1,53 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '../../../../lib/db';// ใช้ connection pool เดิมจาก src/lib/db.js
+import pool from '../../../../lib/db'; // ใช้ connection pool เดิมจาก src/lib/db.js
 
 interface Context {
-    params: {
-        id: string; // ชื่อต้องตรงกับ [id] ในชื่อไฟล์/โฟลเดอร์
-    };
+  params: {
+    id: string; // ต้องตรงกับ [id] ในชื่อไฟล์/โฟลเดอร์
+  };
 }
 
 export async function GET(request: NextRequest) {
   try {
     const connection = await pool.getConnection();
-    const searchParams = request.nextUrl.searchParams;
-    const id = searchParams.get('id');
-    const sqlQuery = `
-    SELECT 
-        subjectCourseId, 
-        nameFullDegreeTh, 
-        planCourse, 
-        nameSubjectThai, 
-        nameSubjectEng, 
-        subjectCategoryName, 
-        subjectGroupName, 
-        studyYear, 
-        term 
-    FROM \`subjectCourse\` 
-    INNER JOIN coursePlan ON subjectCourse.coursePlanId = coursePlan.coursePlanId 
-    INNER JOIN course ON coursePlan.courseId = course.courseId 
-    INNER JOIN subject ON subjectCourse.subjectId = subject.subjectId 
-    INNER JOIN subjectCategory ON subject.subjectCategoryId = subjectCategory.subjectCategoryId 
-    WHERE 
-        coursePlan.isVisible = 1 AND 
-        subject.isVisible = 1 AND 
-        subjectCourse.coursePlanId = ? `;
-    const [rows] = await connection.query(sqlQuery, [id]);
+    const search_params = request.nextUrl.searchParams;
+    const course_plan_id = search_params.get('id');
+
+    const sql_query = `
+      SELECT 
+          subject_course.subject_course_id AS subject_course_id,
+          course.name_course_use AS name_course_use,
+          course_plan.plan_course AS plan_course,
+          subject.subject_code AS subject_code,
+          subject.name_subject_thai AS name_subject_thai,
+          subject.name_subject_eng AS name_subject_eng,
+          subject_category.category_name AS subject_category_name,
+          subject_category.master_category AS subject_group_name,
+          subject_course.part_year AS study_year,
+          subject_course.std_term AS term
+      FROM subject_course
+      INNER JOIN course_plan ON subject_course.course_plan_id = course_plan.course_plan_id
+      INNER JOIN course ON course_plan.course_id = course.course_id
+      INNER JOIN subject ON subject_course.subject_id = subject.subject_id
+      INNER JOIN subject_category ON subject.subject_category_id = subject_category.subject_category_id
+      WHERE 
+          course_plan.is_visible = 1
+          AND subject.is_visible = 1
+          AND subject_course.course_plan_id = ?;
+    `;
+
+    const [rows] = await connection.query(sql_query, [course_plan_id]);
     connection.release();
-    
-    // Ant Design Table ต้องการ key ที่ไม่ซ้ำกันในแต่ละแถว
-    // เราจะใช้ id จากฐานข้อมูลมาเป็น key
-    const dataWithKeys = rows.map(row => ({
+
+    const data_with_keys = rows.map((row: any) => ({
       ...row,
-      key: row.subjectCourseId
+      key: row.subject_course_id
     }));
 
-    return NextResponse.json(dataWithKeys);
+    return NextResponse.json(data_with_keys);
 
   } catch (error) {
-    console.error("Database Error:", error);
+    console.error('Database Error:', error);
     return NextResponse.json(
-      { message: "Internal Server Error" },
+      { message: 'Internal Server Error' },
       { status: 500 }
     );
   }
@@ -55,34 +57,38 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest, context: Context) {
   try {
-    // 1. อ่านข้อมูล id จาก request body
-    const { id } = await request.json();
-    console.log(` id: ${id}`);
-    
-    if (!id) {
-      return NextResponse.json({ message: "Missing subjectCourse ID in path" }, { status: 400 });
+    const { id: subject_course_id } = await request.json();
+    console.log(`subject_course_id: ${subject_course_id}`);
+
+    if (!subject_course_id) {
+      return NextResponse.json(
+        { message: 'Missing subject_course_id in request body' },
+        { status: 400 }
+      );
     }
 
     const connection = await pool.getConnection();
-    const sqlQuery = `DELETE FROM subjectCourse WHERE subjectCourseId = ?`;
-    const [result] = await connection.query(sqlQuery, [id]);
+    const sql_query = `DELETE FROM subject_course WHERE subject_course_id = ?`;
+    const [result] = await connection.query(sql_query, [subject_course_id]);
     connection.release();
 
     if ('affectedRows' in result && result.affectedRows === 0) {
-            return NextResponse.json(
-            { message: 'Course not found or already deleted.' },
-            { status: 404 } // Not Found
-        );
+      return NextResponse.json(
+        { message: 'Subject course not found or already deleted.' },
+        { status: 404 }
+      );
     }
 
-    // 5. ส่งสถานะความสำเร็จกลับไป
     return NextResponse.json(
-        { message: `Subject course with ID ${id} successfully deleted (or hidden).` }, 
-        { status: 200 } // OK
+      { message: `Subject course with ID ${subject_course_id} successfully deleted.` },
+      { status: 200 }
     );
 
   } catch (error) {
-    console.error("PATCH Error:", error);
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    console.error('DELETE Error:', error);
+    return NextResponse.json(
+      { message: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
