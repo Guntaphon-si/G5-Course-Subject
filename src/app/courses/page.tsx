@@ -35,17 +35,6 @@ interface CourseDataType {
 name_course_use: string;
 plan_course: string;
 total_credit: number;
-general_subject_credit: number;
-specific_subject_credit: number;
-free_subject_credit: number;
-core_subject_credit: number;
-special_subject_credit: number;
-select_subject_credit: number;
-happy_subject_credit: number;
-entrepreneurship_subject_credit: number;
-language_subject_credit: number;
-people_subject_credit: number;
-aesthetics_subject_credit: number;
 internship_hours: number;
 credit_intern: number;
 
