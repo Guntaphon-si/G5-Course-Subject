@@ -88,7 +88,7 @@ const App: React.FC = () => {
   };
   const fixedColumns: TableColumnsType<CourseDataType> = [
 
- { title: 'ชื่อหลักสูตร (ไทย)', dataIndex: 'name_course_use', fixed: true, width: 200 },
+ { title: 'ชื่อหลักสูตร (ไทย)', dataIndex: 'name_course_use', fixed: true, width: 100 },
 { title: 'แผนการเรียน', dataIndex: 'plan_course', width: 150, fixed: true },
 { title: 'หน่วยกิตรวม', dataIndex: 'total_credit', width: 120 }    ,
 // { title: 'หมวดวิชาศึกษาทั่วไป', dataIndex: 'general_subject_credit', width: 150 },
@@ -108,7 +108,7 @@ const App: React.FC = () => {
       title: 'การจัดการ',
       key: 'action',
       fixed: 'right', // ทำให้คอลัมน์นี้อยู่ขวาสุดเสมอ
-      width: 250,
+      width: 150,
       render: (text, record) => ( // record คือข้อมูลของแถวนั้นๆ
         <Space size="middle">
           <Button onClick={() => handleViewDetails(record.course_plan_id)}>
@@ -161,11 +161,7 @@ const App: React.FC = () => {
 
         // แปลง Object ที่ได้จาก API ให้เป็น Array เพื่อใช้กับ Table ย่อย
         const formattedData: DetailDataType[] = [
-          { title: 'หมวดวิชาศึกษาทั่วไป', credit: data.general_subject_credit },
-          { title: 'หมวดวิชาเฉพาะ', credit: data.specific_subject_credit },
-          { title: 'หมวดวิชาเลือกเสรี', credit: data.free_subject_credit },
-          { title: 'วิชาแกน', credit: data.core_subject_credit },
-          // ... เพิ่ม Category อื่นๆ ตามที่ API ส่งมา
+          ...data
         ].filter(item => item.credit != null); // กรองเฉพาะรายการที่มีข้อมูล
 
         setDetails(formattedData);

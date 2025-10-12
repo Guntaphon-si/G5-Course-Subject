@@ -1,315 +1,250 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useState, useEffect, useMemo } from 'react';
 import {
-  Button,
-  Card,
-  Col,
   Form,
+  Select,
   Input,
   InputNumber,
-  Row,
-  Select,
-  Space,
+  Button,
+  Card,
   Typography,
+  Divider,
+  Row,
+  Col,
   message,
-} from "antd";
-import { useRouter } from "next/navigation";
+  Spin
+} from 'antd';
+import { FormInstance } from 'antd/lib/form';
 
-// Interface สำหรับข้อมูลหลักสูตรที่ดึงมาจาก API
-interface CourseFromApi {
+const { Title, Text } = Typography;
+const { Option } = Select;
+
+type SubjectCategory = {
+  subject_category_id: number;
+  category_name: string;
+  category_level: number;
+  master_category: number | null;
+};
+
+type MasterCategory = {
+  subject_category_id: number;
+  category_name: string;
+  sub_categories: SubjectCategory[];
+};
+
+type Course = {
   course_id: number;
-  name_course_th: string;
-  name_course_use:string;
-  // เพิ่ม field อื่นๆ ที่ API คืนค่ามาหากจำเป็น
-}
+  name_course_use: string;
+};
 
-// Interface สำหรับข้อมูลที่ส่งไป POST
-interface CoursePlanFormValues {
-  courseId: number;
-  planCourse: string;
-  internshipHours: number;
-  creditIntern: number;
-  totalCredit: number;
-  generalSubjectCredit: number;
-  specificSubjectCredit: number;
-  freeSubjectCredit: number;
-  coreSubjectCredit: number;
-  spacailSubjectCredit: number;
-  selectSubjectCredit: number;
-  happySubjectCredit: number;
-  entrepreneurshipSubjectCredit: number;
-  languageSubjectCredit: number;
-  peopleSubjectCredit: number;
-  aestheticsSubjectCredit: number;
-}
+// Component นี้ใช้เพื่อแสดงผลเท่านั้น ไม่กระทบการส่งข้อมูล
+const CreditSumDisplay = ({ masterCategory, form }: { masterCategory: MasterCategory, form: FormInstance }) => {
+  const credits = Form.useWatch('credits', form);
+  const sum = useMemo(() => {
+    if (!credits || !masterCategory.sub_categories) return 0;
+    return masterCategory.sub_categories.reduce((acc, subCat) => {
+      const value = credits[subCat.subject_category_id] || 0;
+      return acc + Number(value);
+    }, 0);
+  }, [credits, masterCategory]);
+
+  return (
+    <Form.Item label={`ผลรวมหน่วยกิตของ "${masterCategory.category_name}"`}>
+      <InputNumber value={sum} disabled style={{ width: '100%', fontWeight: 'bold', color: 'rgba(0, 0, 0, 0.88)' }} />
+    </Form.Item>
+  );
+};
+
 
 export default function AddCoursePlanPage() {
-  const { Title } = Typography;
-  // ใช้ Form.useForm<T> เพื่อกำหนด Type ของ Form Values
-  const [form] = Form.useForm<CoursePlanFormValues>();
-  const router = useRouter();
-  const [submitting, setSubmitting] = useState(false);
-  // กำหนด Type ที่ชัดเจนสำหรับ courses และเพิ่ม loading state
-  const [courses, setCourses] = useState<CourseFromApi[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [form] = Form.useForm();
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [masterCategories, setMasterCategories] = useState<MasterCategory[]>([]);
+  const [standaloneCategories, setStandaloneCategories] = useState<SubjectCategory[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
-  // ดึงข้อมูลหลักสูตรทั้งหมด (ใช้ useEffect เพื่อเรียก API เพียงครั้งเดียว)
   useEffect(() => {
-    setLoading(true);
-    fetch("/api/coursePlan/CourseDropDown")
-      .then((res) => {
-        if (!res.ok)
-          throw new Error("ไม่สามารถดึงข้อมูลหลักสูตรได้จากเซิร์ฟเวอร์");
-        return res.json();
-      })
-      .then((data: CourseFromApi[]) => {
-        if (Array.isArray(data)) {
-          setCourses(data);
-        } else {
-          message.error("รูปแบบข้อมูลหลักสูตรที่ได้รับไม่ถูกต้อง");
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        message.error(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูลหลักสูตร");
-      })
-      .finally(() => setLoading(false));
-  }, []); // [] ทำให้ Effect ทำงานแค่ครั้งเดียวหลัง Render ครั้งแรก
+    async function fetchCourses() {
+      try {
+        const res = await fetch('/api/coursePlan/courseDropDown'); 
+        const data = await res.json();
+        setCourses(data.items || []);
+      } catch (error) {
+        message.error('ไม่สามารถดึงข้อมูลหลักสูตรได้');
+      }
+    }
+    fetchCourses();
+  }, []);
 
-  // ใช้ Type ที่กำหนดไว้ใน onFinish
-  const onFinish = async (values: CoursePlanFormValues) => {
-    setSubmitting(true);
+  useEffect(() => {
+    if (selectedCourseId) {
+      async function fetchAndStructureCategories() {
+        setLoadingCategories(true);
+        try {
+          const res = await fetch(`/api/subject-category?course_id=${selectedCourseId}`);
+          const data = await res.json();
+          const rawCategories: SubjectCategory[] = data.items || [];
+          const mastersWithChildren: MasterCategory[] = [];
+          const standalones: SubjectCategory[] = [];
+          const topLevelCats = rawCategories.filter(cat => cat.category_level === 1);
+          topLevelCats.forEach(master => {
+            const subs = rawCategories.filter(sub => sub.master_category === master.subject_category_id);
+            if (subs.length > 0) {
+              mastersWithChildren.push({ ...master, sub_categories: subs });
+            } else {
+              standalones.push(master);
+            }
+          });
+          setMasterCategories(mastersWithChildren);
+          setStandaloneCategories(standalones);
+        } catch (error) {
+          message.error('ไม่สามารถดึงข้อมูลกลุ่มวิชาได้');
+        } finally {
+          setLoadingCategories(false);
+        }
+      }
+      fetchAndStructureCategories();
+    } else {
+      setMasterCategories([]);
+      setStandaloneCategories([]);
+    }
+  }, [selectedCourseId]);
+  
+  const handleCourseChange = (value: number) => {
+    setSelectedCourseId(value);
+    form.resetFields(['credits']);
+  };
+
+  const onFinish = async (values: any) => {
+    setLoading(true);
+    
+    // =================== จุดที่แก้ไข ===================
+    // ไม่ต้องคำนวณผลรวมหรือแยกข้อมูลอีกต่อไป
+    // `values` ที่ได้จากฟอร์มคือข้อมูลทั้งหมดที่ต้องส่งไป API
+    const payload = values;
+    // =================================================
+    
     try {
-      const res = await fetch("/api/coursePlan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+      const res = await fetch('/api/coursePlan', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "เกิดข้อผิดพลาดในการบันทึก");
-      message.success("บันทึกแผนการเรียนสำเร็จ");
-      router.push("/courses");
-    } catch (e: any) {
-      message.error(e.message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+      if (!res.ok) {
+        throw new Error(data.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      }
+
+      message.success('บันทึกแผนการเรียนสำเร็จ!');
+      form.resetFields();
+      setSelectedCourseId(null);
+    } catch (error: any) {
+      message.error(error.message);
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: 10 }}>
-      <Space direction="vertical" style={{ width: "100%" }} size={10}>
-        <Row>
-          <Col span={12}>
-            <Title style={{ marginTop: 0, marginBottom: 0, fontSize: 18 }}>
-              สร้างแผนการเรียนใหม่
-            </Title>
-          </Col>
-        </Row>
-        <Card className="chemds-container">
-          <Form layout="vertical" form={form} onFinish={onFinish}>
-            {/* เลือกหลักสูตร */}
-            <Title level={5}>เลือกหลักสูตร</Title>
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item
-                  label="หลักสูตร"
-                  name="courseId"
-                  rules={[{ required: true, message: "กรุณาเลือกหลักสูตร" }]}
-                >
-                  {/* เพิ่ม loading={loading} เพื่อแสดงสถานะการโหลด */}
-                  <Select
-                    placeholder="เลือกหลักสูตร"
-                    showSearch
-                    optionFilterProp="children"
-                    loading={loading}
-                  >
-                    {courses
-                      .filter((course) => course.course_id != null)
-                      .map((course) => (
-                        <Select.Option
-                          key={course.course_id}
-                          value={course.course_id}
-                        >
-                          {`${course.name_course_th|| "ไม่ระบุชื่อหลักสูตร"} (${course.name_course_use|| "ไม่ระบุชื่อหลักสูตร"} )`}
-                        </Select.Option>
-                      ))}
-
-                    {/* ✅ กรณีมีบาง course ที่ไม่มี courseId ให้ fallback key */}
-                    {/* {courses
-                      .filter((course) => course.courseId == null)
-                      .map((course, index) => (
-                        <Select.Option
-                          key={index}
-                          value={index}
-                        >
-                          {course.nameCourseTh || "ไม่ระบุชื่อหลักสูตร"}
-                        </Select.Option>
-                      ))} */}
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-
-            {/* COURSE PLAN */}
-            <Title level={5} style={{ marginTop: 12 }}>
-              ข้อมูลแผนการเรียน (ตาราง coursePlan)
-            </Title>
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item
-                  label="แผนการเรียน"
-                  name="planCourse"
-                  rules={[{ required: true, message: "กรอกแผนการเรียน" }]}
-                >
-                  <Input placeholder="แผนสหกิจศึกษา / แผนไม่สหกิจศึกษา" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="ชั่วโมงฝึกงาน"
-                  name="internshipHours"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="หน่วยกิตฝึกงาน"
-                  name="creditIntern"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="หน่วยกิตรวม"
-                  name="totalCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-
-              <Col span={12}>
-                <Form.Item
-                  label="หมวดศึกษาทั่วไป"
-                  name="generalSubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="หมวดวิชาเฉพาะ"
-                  name="specificSubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="หมวดเลือกเสรี"
-                  name="freeSubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            {/* CREDIT REQUIRE - ตาราง creditRequire */}
-            <Title level={5} style={{ marginTop: 12 }}>
-              หน่วยกิตตามหมวดหมู่วิชา (ตาราง creditRequire)
-            </Title>
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item
-                  label="วิชาแกน"
-                  name="coreSubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="วิชาเฉพาะด้าน"
-                  name="spacailSubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="วิชาเลือก"
-                  name="selectSubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="กลุ่มสาระอยู่ดีมีสุข"
-                  name="happySubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="กลุ่มสาระศาสตร์แห่งผู้ประกอบการ"
-                  name="entrepreneurshipSubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="กลุ่มสาระภาษากับการสื่อสาร"
-                  name="languageSubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="กลุ่มสาระพลเมืองไทยและพลเมืองโลก"
-                  name="peopleSubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="กลุ่มสาระสุนทรียศาสตร์"
-                  name="aestheticsSubjectCredit"
-                  initialValue={0}
-                >
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Space style={{ marginTop: 16 }}>
-              <Button onClick={() => router.push("/courses")}>ยกเลิก</Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                บันทึก
-              </Button>
-            </Space>
-          </Form>
+    <div style={{ padding: '24px' }}>
+      <Title level={2}>เพิ่มแผนการเรียนใหม่</Title>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={onFinish}
+        initialValues={{ credits: {} }}
+      >
+        <Card title="ข้อมูลแผนการเรียน (Course Plan)">
+           <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item name="course_id" label="เลือกหลักสูตร" rules={[{ required: true, message: 'กรุณาเลือกหลักสูตร' }]}>
+                <Select showSearch placeholder="ค้นหาหรือเลือกหลักสูตร" onChange={handleCourseChange} optionFilterProp="children">
+                  {courses.map(course => (
+                    <Option key={course.course_id} value={course.course_id}>
+                      {course.name_course_use}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item name="plan_course" label="ชื่อแผนการเรียน (เช่น แผนสหกิจศึกษา)" rules={[{ required: true, message: 'กรุณากรอกชื่อแผนการเรียน' }]}>
+                <Input placeholder="เช่น แผนสหกิจศึกษา" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="total_credit" label="หน่วยกิตรวมตลอดหลักสูตร" rules={[{ required: true, message: 'กรุณากรอกหน่วยกิตรวม' }]}>
+                <InputNumber style={{ width: '100%' }} placeholder="เช่น 128" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="credit_intern" label="หน่วยกิตฝึกงาน">
+                <InputNumber style={{ width: '100%' }} placeholder="เช่น 6" min={0} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="internship_hours" label="ชั่วโมงฝึกงาน/สหกิจ">
+                <InputNumber style={{ width: '100%' }} placeholder="เช่น 480" min={0} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Card>
-      </Space>
+
+        <Divider />
+
+        <Card title="กำหนดหน่วยกิตตามกลุ่มวิชา (Credit Requirement)">
+          {selectedCourseId ? (
+            loadingCategories ? (
+              <div style={{ textAlign: 'center' }}><Spin /></div>
+            ) : (
+              <>
+                {/* ส่วนแสดงผลกลุ่มที่มีลำดับชั้น */}
+                {masterCategories.map(masterCat => (
+                  <div key={masterCat.subject_category_id}>
+                    <Divider orientation="left" style={{ borderColor: '#d9d9d9' }}>{masterCat.category_name}</Divider>
+                    <Row gutter={16}>
+                      <Col span={24}>
+                         <CreditSumDisplay masterCategory={masterCat} form={form} />
+                      </Col>
+                      {masterCat.sub_categories.map(subCat => (
+                        <Col span={8} key={subCat.subject_category_id}>
+                          <Form.Item name={['credits', subCat.subject_category_id]} label={subCat.category_name}>
+                            <InputNumber style={{ width: '100%' }} placeholder="ระบุหน่วยกิต" min={0} />
+                          </Form.Item>
+                        </Col>
+                      ))}
+                    </Row>
+                  </div>
+                ))}
+                
+                {/* ส่วนแสดงผลกลุ่มวิชาเดี่ยว */}
+                {standaloneCategories.length > 0 && <Divider orientation="left" style={{ borderColor: '#d9d9d9' }}>หมวดหมู่อื่นๆ</Divider>}
+                <Row gutter={16}>
+                    {standaloneCategories.map(standaloneCat => (
+                        <Col span={8} key={standaloneCat.subject_category_id}>
+                            <Form.Item name={['credits', standaloneCat.subject_category_id]} label={standaloneCat.category_name}>
+                                <InputNumber style={{ width: '100%' }} placeholder="ระบุหน่วยกิต" min={0} />
+                            </Form.Item>
+                        </Col>
+                    ))}
+                </Row>
+              </>
+            )
+          ) : (
+            <Text type="secondary">กรุณาเลือกหลักสูตรก่อนเพื่อกำหนดหน่วยกิต</Text>
+          )}
+        </Card>
+
+        <Form.Item style={{ marginTop: '24px' }}>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            บันทึกข้อมูล
+          </Button>
+        </Form.Item>
+      </Form>
     </div>
   );
 }

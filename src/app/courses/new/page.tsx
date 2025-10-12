@@ -6,16 +6,14 @@ import {
   Col,
   Form,
   Input,
-  InputNumber,
   Row,
   Select,
   Space,
   Typography,
   message,
 } from "antd";
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
 
-// แก้ไข: เปลี่ยน Interface เป็น snake_case
 interface CourseData {
   name_course_th: string;
   name_course_use?: string;
@@ -24,28 +22,14 @@ interface CourseData {
   name_full_degree_eng?: string;
   name_initials_degree_th?: string;
   name_initials_degree_eng?: string;
-  
-  plan_course: number;
-  total_credit: number;
-  general_subject_credit: number;
-  specific_subject_credit: number;
-  free_subject_credit: number;
-  core_subject_credit: number;
-  special_subject_credit: number;
-  select_subject_credit: number;
-  happy_subject_credit: number;
-  entrepreneurship_subject_credit: number;
-  language_subject_credit: number;
-  people_subject_credit: number;
-  aesthetics_subject_credit: number;
-  internship_hours: number;
-  credit_intern: number;
-}
-interface DepartmentFromApi {
   department_id: number;
-  department_code: string;
-  department_name:string;
-  // เพิ่ม field อื่นๆ ที่ API คืนค่ามาหากจำเป็น
+}
+
+interface DepartmentFromApi {
+  dept_id: number;
+  dept_code: string;
+  dept_name: string;
+  dept_alias_th?: string;
 }
 
 export default function AddCoursePage() {
@@ -55,47 +39,28 @@ export default function AddCoursePage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [department, setDepartment] = useState<DepartmentFromApi[]>([]);
-  // แก้ไข: เปลี่ยนค่าเริ่มต้นเป็น snake_case
-  useEffect(() => {
-      setLoading(true);
-      fetch("/api/department")
-        .then((res) => {
-          if (!res.ok)
-            throw new Error("ไม่สามารถดึงข้อมูลคณะได้จากเซิร์ฟเวอร์");
-          return res.json();
-        })
-        .then((data: DepartmentFromApi[]) => {
-          if (Array.isArray(data)) {
-            setDepartment(data);
-          } else {
-            message.error("รูปแบบข้อมูลคณะที่ได้รับไม่ถูกต้อง");
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-          message.error(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูลคณะ");
-        })
-        .finally(() => setLoading(false));
-    }, []);
-  const initialFormValues: CourseData = {
-    name_course_th: '',
-    plan_course: 4,
-    total_credit: 120, 
-    general_subject_credit: 0,
-    specific_subject_credit: 0,
-    free_subject_credit: 0,
-    core_subject_credit: 0,
-    special_subject_credit: 0,
-    select_subject_credit: 0,
-    happy_subject_credit: 0,
-    entrepreneurship_subject_credit: 0,
-    language_subject_credit: 0,
-    people_subject_credit: 0,
-    aesthetics_subject_credit: 0,
-    internship_hours: 0,
-    credit_intern: 0,
-  };
 
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/department")
+      .then((res) => {
+        if (!res.ok)
+          throw new Error("ไม่สามารถดึงข้อมูลคณะได้จากเซิร์ฟเวอร์");
+        return res.json();
+      })
+      .then((data: DepartmentFromApi[]) => {
+        if (Array.isArray(data)) {
+          setDepartment(data);
+        } else {
+          message.error("รูปแบบข้อมูลคณะที่ได้รับไม่ถูกต้อง");
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        message.error(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูลคณะ");
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const onFinish = async (values: CourseData) => {
     setSubmitting(true);
@@ -106,15 +71,14 @@ export default function AddCoursePage() {
         body: JSON.stringify(values),
       });
       const data = await res.json();
-      
+
       if (!res.ok) {
-         console.error("Server Error Response:", data);
-         throw new Error(data.message || "เกิดข้อผิดพลาดในการบันทึกหลักสูตร");
+        console.error("Server Error Response:", data);
+        throw new Error(data.message || "เกิดข้อผิดพลาดในการบันทึกหลักสูตร");
       }
-      
+
       message.success("บันทึกหลักสูตรสำเร็จ");
       router.push("/courses");
-      
     } catch (e: any) {
       message.error(e.message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
     } finally {
@@ -134,75 +98,95 @@ export default function AddCoursePage() {
         </Row>
 
         <Card className="chemds-container">
-          <Form 
-            layout="vertical" 
-            form={form} 
-            onFinish={onFinish}
-            initialValues={initialFormValues}
-          >
-            
-            <Title level={5}>ข้อมูลหลักสูตร (Course)</Title>
+          <Form layout="vertical" form={form} onFinish={onFinish}>
+            <Title level={5}>ข้อมูลหลักสูตร</Title>
             <Row gutter={12}>
-              {/* แก้ไข: เปลี่ยน name เป็น snake_case */}
               <Col span={12}>
                 <Form.Item
                   label="ชื่อหลักสูตร (ไทย)"
                   name="name_course_th"
-                  rules={[{ required: true, message: "กรอกชื่อหลักสูตร (ไทย)" }]}
+                  rules={[
+                    { required: true, message: "กรุณากรอกชื่อหลักสูตร (ไทย)" },
+                  ]}
                 >
-                  <Input placeholder="วิศวกรรมคอมพิวเตอร์" />
+                  <Input placeholder="หลักสูตรวิศวกรรมศาสตร์ เอกวิศวกรรมคอมพิวเตอร์" />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="ชื่อหลักสูตร (ใช้จริง)" name="name_course_use">
-                  <Input placeholder="วศ.คอม 66" />
+                  <Input placeholder="วศ.คอม 60" />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col span={24}>
                 <Form.Item label="ชื่อหลักสูตร (อังกฤษ)" name="name_course_eng">
-                  <Input placeholder="Computer Engineering" />
+                  <Input placeholder="Bachelor of Engineering Program in Computer Engineering" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Title level={5} style={{ marginTop: 16 }}>
+              ชื่อปริญญา
+            </Title>
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item
+                  label="ชื่อเต็มปริญญา (ไทย)"
+                  name="name_full_degree_th"
+                >
+                  <Input placeholder="วิศวกรรมศาสตรบัณฑิต (วิศวกรรมคอมพิวเตอร์)" />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item label="ชื่อเต็มปริญญา (ไทย)" name="name_full_degree_th">
-                  <Input placeholder="วิศวกรรมศาสตรบัณฑิต" />
+                <Form.Item
+                  label="ชื่อเต็มปริญญา (อังกฤษ)"
+                  name="name_full_degree_eng"
+                >
+                  <Input placeholder="Bachelor of Engineering (Computer Engineering)" />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item label="ชื่อเต็มปริญญา (อังกฤษ)" name="name_full_degree_eng">
-                  <Input placeholder="Bachelor of Engineering" />
+                <Form.Item
+                  label="ชื่อย่อปริญญา (ไทย)"
+                  name="name_initials_degree_th"
+                >
+                  <Input placeholder="วศ.บ. (วิศวกรรมคอมพิวเตอร์)" />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item label="ชื่อย่อปริญญา (ไทย)" name="name_initials_degree_th">
-                  <Input placeholder="วศ.บ." />
+                <Form.Item
+                  label="ชื่อย่อปริญญา (อังกฤษ)"
+                  name="name_initials_degree_eng"
+                >
+                  <Input placeholder="B.Eng. (Computer Engineering)" />
                 </Form.Item>
               </Col>
-              <Col span={12}>
-                <Form.Item label="ชื่อย่อปริญญา (อังกฤษ)" name="name_initials_degree_eng">
-                  <Input placeholder="B.Eng." />
-                </Form.Item>
-              </Col>
+            </Row>
+
+            <Title level={5} style={{ marginTop: 16 }}>
+              สังกัด
+            </Title>
+            <Row gutter={12}>
               <Col span={12}>
                 <Form.Item
                   label="คณะ"
                   name="department_id"
                   rules={[{ required: true, message: "กรุณาเลือกคณะ" }]}
                 >
-                  {/* เพิ่ม loading={loading} เพื่อแสดงสถานะการโหลด */}
                   <Select
                     placeholder="เลือกคณะ"
                     optionFilterProp="children"
                     loading={loading}
+                    showSearch
+                    
                   >
                     {department
-                      .filter((department) => department.department_id != null)
-                      .map((department) => (
+                      .filter((dept) => dept.dept_id != null)
+                      .map((dept) => (
                         <Select.Option
-                          key={department.department_id}
-                          value={department.department_id}
+                          key={dept.dept_id}
+                          value={dept.dept_id}
                         >
-                          {`${department.department_name} (${department.department_code} )`}
+                          {`${dept.dept_name} (${dept.dept_code})`}
                         </Select.Option>
                       ))}
                   </Select>
@@ -210,95 +194,7 @@ export default function AddCoursePage() {
               </Col>
             </Row>
 
-            <Title level={5} style={{ marginTop: 24 }}>แผนการเรียนและหน่วยกิตรวม</Title>
-            <Row gutter={12}>
-                <Col span={12}>
-                  <Form.Item label="แผนการเรียน (ปี)" name="plan_course" rules={[{ required: true, message: "กรอกแผนการเรียน" }]}>
-                    <InputNumber min={1} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item label="หน่วยกิตรวมขั้นต่ำ" name="total_credit" rules={[{ required: true, message: "กรอกหน่วยกิตรวม" }]}>
-                    <InputNumber min={1} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-            </Row>
-
-            <Title level={5} style={{ marginTop: 24 }}>หน่วยกิตรายกลุ่มวิชา</Title>
-            <Row gutter={12}>
-                <Col span={6}>
-                  <Form.Item label="วิชาทั่วไป" name="general_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="วิชาเฉพาะด้าน" name="specific_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="วิชาเลือกเสรี" name="free_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="วิชาแกน" name="core_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="วิชาเฉพาะ (Special)" name="special_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="วิชาเลือก" name="select_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="กลุ่มอยู่ดีมีสุข" name="happy_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="กลุ่มผู้ประกอบการ" name="entrepreneurship_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="กลุ่มภาษากับการสื่อสาร" name="language_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="กลุ่มพลเมือง" name="people_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="กลุ่มสุนทรียศาสตร์" name="aesthetics_subject_credit">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-            </Row>
-
-            <Title level={5} style={{ marginTop: 24 }}>ข้อมูลการฝึกงาน</Title>
-            <Row gutter={12}>
-                <Col span={12}>
-                  <Form.Item label="ชั่วโมงฝึกงาน" name="internship_hours">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item label="หน่วยกิตฝึกงาน" name="credit_intern">
-                    <InputNumber min={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-            </Row>
-
-
-            <Space style={{ marginTop: 16 }}>
+            <Space style={{ marginTop: 24 }}>
               <Button onClick={() => router.push("/courses")}>ยกเลิก</Button>
               <Button type="primary" htmlType="submit" loading={submitting}>
                 บันทึก
@@ -310,4 +206,3 @@ export default function AddCoursePage() {
     </div>
   );
 }
-
