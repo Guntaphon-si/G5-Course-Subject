@@ -8,13 +8,14 @@ export async function GET(req: NextRequest) {
     const q = (searchParams.get('q') || '').trim();
 
     // ---- START: โค้ดที่แก้ไข ----
-    // แก้ไข: เปลี่ยน s.credit เป็น s.sub_credit_id และเพิ่ม JOIN กับตาราง course
+    // เพิ่มการดึง c.name_course_use AS courseNameTh
     let query = `
       SELECT 
         s.subject_id AS subjectId,
         s.subject_code AS subjectCode,
         s.name_subject_thai AS nameSubjectThai,
         s.name_subject_eng AS nameSubjectEng,
+        c.name_course_use AS courseNameTh,
         c.course_id AS courseId
       FROM subject s
       JOIN course c ON s.course_id = c.course_id
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     const params: string[] = [];
     if (q) {
       const searchTerm = `%${q}%`;
-      // แก้ไข: ปรับเงื่อนไขการค้นหาให้เหมาะสม
+      // ปรับเงื่อนไขการค้นหาให้เหมาะสม
       query += ` AND (s.subject_code LIKE ? OR s.name_subject_thai LIKE ?)`;
       params.push(searchTerm, searchTerm);
     }
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
     // ---- END: โค้ดที่แก้ไข ----
 
   } catch (error: any) {
-    // แก้ไข: ปรับปรุง Error Log และ Response ให้สื่อความหมายชัดเจนขึ้น
+    // ปรับปรุง Error Log และ Response ให้สื่อความหมายชัดเจนขึ้น
     console.error('GET /api/subjects/search error:', error);
     return NextResponse.json(
       { success: false, message: 'เกิดข้อผิดพลาดในการค้นหาวิชา' },

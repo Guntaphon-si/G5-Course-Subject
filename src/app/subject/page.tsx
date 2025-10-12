@@ -8,11 +8,21 @@ type SubjectRow = {
   courseId: number;
   subjectTypeId: number;
   subjectCategoryId: number;
+  subCreditId: number;
   subjectCode: string;
   nameSubjectThai: string;
   nameSubjectEng: string;
-  credit: number;
   isVisible: number;
+  nameCourseUse: string;
+  credit: number;
+  lectureHours: number;
+  labHours: number;
+  bySelfHours: number;
+};
+
+type CourseOption = {
+  courseId: number;
+  nameCourseUse: string;
 };
 
 export default function SubjectPage() {
@@ -21,14 +31,20 @@ export default function SubjectPage() {
   const [listLoading, setListLoading] = useState(false);
   const [rows, setRows] = useState<SubjectRow[]>([]);
   const [searchQ, setSearchQ] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState<string>('');
+  const [courseOptions, setCourseOptions] = useState<CourseOption[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<SubjectRow | null>(null);
   const [updating, setUpdating] = useState(false);
 
-  const fetchRows = useCallback(async (q: string) => {
+  const fetchRows = useCallback(async (q: string, courseId: string = '') => {
     try {
       setListLoading(true);
-      const res = await fetch(`/api/subjects/ru-subject${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+      let url = `/api/subjects/ru-subject?`;
+      if (q) url += `q=${encodeURIComponent(q)}&`;
+      if (courseId) url += `courseId=${encodeURIComponent(courseId)}`;
+      
+      const res = await fetch(url);
       const data = await res.json();
       setRows(data.items || []);
     } catch (e) {
@@ -38,9 +54,20 @@ export default function SubjectPage() {
     }
   }, []);
 
+  const fetchCourses = useCallback(async () => {
+    try {
+      const res = await fetch('/api/course/list');
+      const data = await res.json();
+      setCourseOptions(data.items || []);
+    } catch (e) {
+      antdMessage.error('ดึงข้อมูลหลักสูตรไม่สำเร็จ');
+    }
+  }, []);
+
   useEffect(() => {
-    fetchRows('');
-  }, [fetchRows]);
+    fetchRows('', '');
+    fetchCourses();
+  }, [fetchRows, fetchCourses]);
 
   const handleEdit = (record: SubjectRow) => {
     setEditingRow(record);
@@ -48,7 +75,6 @@ export default function SubjectPage() {
       subjectCode: record.subjectCode,
       nameSubjectThai: record.nameSubjectThai,
       nameSubjectEng: record.nameSubjectEng,
-      credit: record.credit,
       isVisible: record.isVisible,
     });
     setEditOpen(true);
@@ -66,6 +92,7 @@ export default function SubjectPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subjectId: editingRow.subjectId,
+          subCreditId: editingRow.subCreditId,
           ...values,
         }),
       });
@@ -76,7 +103,7 @@ export default function SubjectPage() {
       antdMessage.success('อัปเดตสำเร็จ');
       setEditOpen(false);
       form.resetFields();
-      fetchRows(searchQ);
+      fetchRows(searchQ, selectedCourse);
     } catch (e: any) {
       antdMessage.error(e.message || 'เกิดข้อผิดพลาด');
     } finally {
@@ -100,17 +127,37 @@ export default function SubjectPage() {
             </Col>
             <Col>
               <Space>
+                <Select
+                  placeholder="เลือกหลักสูตร"
+                  value={selectedCourse || undefined}
+                  onChange={(value) => {
+                    setSelectedCourse(value);
+                    fetchRows(searchQ, value);
+                  }}
+                  style={{ width: 250 }}
+                >
+                <Select.Option value="">ไม่ระบุ</Select.Option>
+                  {courseOptions.map((course) => (
+                    <Select.Option key={course.courseId} value={String(course.courseId)}>
+                      {course.nameCourseUse}
+                    </Select.Option>
+                  ))}
+                </Select>
                 <Input.Search 
                   allowClear 
                   placeholder="ค้นหา รหัส/ชื่อวิชา" 
                   value={searchQ} 
                   onChange={(e) => setSearchQ(e.target.value)} 
-                  onSearch={() => fetchRows(searchQ)} 
+                  onSearch={() => fetchRows(searchQ, selectedCourse)} 
                   style={{ width: 300 }}
                 />
                 <Button 
                   icon={<ReloadOutlined />}
-                  onClick={() => { setSearchQ(''); fetchRows(''); }}
+                  onClick={() => { 
+                    setSearchQ(''); 
+                    setSelectedCourse('');
+                    fetchRows('', ''); 
+                  }}
                 >
                   ล้าง
                 </Button>
@@ -122,7 +169,11 @@ export default function SubjectPage() {
             rowKey="subjectId"
             loading={listLoading}
             dataSource={rows}
-            pagination={{ pageSize: 10 }}
+            pagination={{ 
+              pageSize: 10,
+              showSizeChanger: false,
+              hideOnSinglePage: false 
+            }}
             scroll={{ x: 1200 }}
             columns={[
               { 
@@ -133,23 +184,34 @@ export default function SubjectPage() {
                 fixed: 'left',
               },
               { 
-                title: 'ชื่อวิชา (ไทย)', 
-                dataIndex: 'nameSubjectThai', 
-                key: 'nameSubjectThai',
-                width: 250,
+                title: 'หลักสูตร', 
+                dataIndex: 'nameCourseUse', 
+                key: 'nameCourseUse',
+                width: 180,
               },
               { 
-                title: 'ชื่อวิชา (อังกฤษ)', 
-                dataIndex: 'nameSubjectEng', 
-                key: 'nameSubjectEng',
-                width: 250,
+                title: 'ชื่อวิชา (ไทย/อังกฤษ)', 
+                key: 'subjectName',
+                width: 300,
+                render: (_: any, record: SubjectRow) => (
+                  <div>
+                    <div>{record.nameSubjectThai}</div>
+                    <div style={{ color: '#888', fontSize: '0.9em' }}>{record.nameSubjectEng}</div>
+                  </div>
+                )
               },
               { 
                 title: 'หน่วยกิต', 
-                dataIndex: 'credit', 
-                key: 'credit', 
-                width: 100,
+                key: 'creditFormat', 
+                width: 130,
                 align: 'center',
+                render: (_: any, record: SubjectRow) => {
+                  const credit = record.credit || 0;
+                  const lecture = record.lectureHours || 0;
+                  const lab = record.labHours || 0;
+                  const bySelf = record.bySelfHours || 0;
+                  return `${credit} (${lecture}-${lab}-${bySelf})`;
+                }
               },
               { 
                 title: 'สถานะ', 
@@ -215,14 +277,6 @@ export default function SubjectPage() {
               rules={[{ required: true, message: 'กรุณากรอกชื่อวิชา' }]}
             >
               <Input placeholder="Subject name in English" />
-            </Form.Item>
-
-            <Form.Item
-              label="หน่วยกิต"
-              name="credit"
-              rules={[{ required: true, message: 'กรุณาระบุหน่วยกิต' }]}
-            >
-              <Input type="number" min={0} placeholder="เช่น 3" />
             </Form.Item>
 
             <Form.Item
