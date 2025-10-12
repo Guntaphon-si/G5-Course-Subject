@@ -6,15 +6,13 @@ import type { TableColumnsType } from "antd";
 import { createStyles } from "antd-style";
 import { useRouter } from "next/navigation";
 
-const use_style = createStyles(({ css, token }) => {
-  const { antCls } = token;
-
+const use_style = createStyles(({ css, token, prefixCls }) => {
   return {
     custom_table: css`
-      ${antCls}-table {
-        ${antCls}-table-container {
-          ${antCls}-table-body,
-          ${antCls}-table-content {
+      .${prefixCls}-table {
+        .${prefixCls}-table-container {
+          .${prefixCls}-table-body,
+          .${prefixCls}-table-content {
             scrollbar-width: thin;
             scrollbar-color: #eaeaea transparent;
             scrollbar-gutter: stable;

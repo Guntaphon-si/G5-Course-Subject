@@ -42,7 +42,8 @@ const AddSubjectCourse: React.FC = () => {
   const [is_loading, set_is_loading] = useState(false);
 
   const search_params = useSearchParams();
-  const course_plan_id = search_params.get("initial_id");
+  const course_plan_id_str = search_params.get("initial_id");
+  const course_plan_id = parseInt(course_plan_id_str || '', 10);
   const router = useRouter();
 
   const [form] = Form.useForm();
@@ -64,7 +65,7 @@ const AddSubjectCourse: React.FC = () => {
         const data: DropdownDataResponse = await response.json();
 
         set_fetched_course_plans(
-          data.course_plans.filter((cp) => cp.course_plan_id == course_plan_id)
+          data.course_plans.filter((cp) => cp.course_plan_id === course_plan_id)
         );
         set_fetched_subjects(data.subjects);
         set_fetched_study_years(data.study_years);

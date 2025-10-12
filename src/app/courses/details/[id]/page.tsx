@@ -1,23 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import CourseSubjectTable from '@/app/components/CourseSubjectTable'; 
-// import { Flex, Table, Button, Space, Modal, message, Input, Select } from 'antd';
-// import type { TableColumnsType } from 'antd';
-// import { createStyles } from 'antd-style';
-// import { useRouter } from 'next/navigation';
-
 
 interface ServerPageProps {
-  params: {
-    id: string; // Server Component จะจัดการ params ได้โดยตรง
-  };
+  params: Promise<{
+    id: string;
+  }>;
 }
 
-export default async function App({ params }: ServerPageProps){
-  const unwrappedParams = await params; 
-  const subject_course_id = unwrappedParams.id;
+export default async function App({ params }: ServerPageProps) {
+  // Await params to get the actual values
+  const { id } = await params;
 
   return (
-    // ส่งค่า ID ที่ถูกแกะแล้วลงไปเป็น Prop ธรรมดา
-    <CourseSubjectTable subject_course_id={subject_course_id} />
+    <CourseSubjectTable subject_course_id={id} />
   );
-};
+}

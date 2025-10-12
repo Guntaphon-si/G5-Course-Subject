@@ -5,14 +5,13 @@ import type { TableColumnsType } from 'antd';
 import { createStyles } from 'antd-style';
 import { useRouter } from 'next/navigation';
 
-const useStyle = createStyles(({ css, token }) => {
-  const { antCls } = token;
+const useStyle = createStyles(({ css, token, prefixCls }) => {
   return {
     customTable: css`
-      ${antCls}-table {
-        ${antCls}-table-container {
-          ${antCls}-table-body,
-          ${antCls}-table-content {
+      .${prefixCls}-table {
+        .${prefixCls}-table-container {
+          .${prefixCls}-table-body,
+          .${prefixCls}-table-content {
             scrollbar-width: thin;
             scrollbar-color: #eaeaea transparent;
             scrollbar-gutter: stable;
@@ -202,6 +201,7 @@ const App: React.FC = () => {
     <Flex vertical gap="small">
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button type="primary" onClick={() => router.push('/courses/new/')}>+ สร้างหลักสูตร</Button>
+          &nbsp;
         <Button type="primary" onClick={() => router.push('/courses/new/addCoursePlan')}>+ สร้างแผนการเรียน</Button>
       </div>
       <Table<CourseDataType>
