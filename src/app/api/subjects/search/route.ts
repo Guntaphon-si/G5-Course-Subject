@@ -15,7 +15,6 @@ export async function GET(req: NextRequest) {
         s.subject_code AS subjectCode,
         s.name_subject_thai AS nameSubjectThai,
         s.name_subject_eng AS nameSubjectEng,
-        c.name_course_th AS courseNameTh,
         c.course_id AS courseId
       FROM subject s
       JOIN course c ON s.course_id = c.course_id
