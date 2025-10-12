@@ -1,17 +1,16 @@
-// src/app/components/CourseSubjectTable.tsx
+// src/app/components/course_subject_table.tsx
 "use client";
-import React, { useEffect, useState, CSSProperties } from 'react';
-import { Flex, Table, Button, Space, Modal, message, Input, Select } from 'antd';
-import type { TableColumnsType } from 'antd';
-import { createStyles } from 'antd-style';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from "react";
+import { Flex, Table, Button, Space, Modal, message, Input, Select } from "antd";
+import type { TableColumnsType } from "antd";
+import { createStyles } from "antd-style";
+import { useRouter } from "next/navigation";
 
-
-const useStyle = createStyles(({ css, token }) => {
+const use_style = createStyles(({ css, token }) => {
   const { antCls } = token;
-  
+
   return {
-    customTable: css`
+    custom_table: css`
       ${antCls}-table {
         ${antCls}-table-container {
           ${antCls}-table-body,
@@ -27,215 +26,209 @@ const useStyle = createStyles(({ css, token }) => {
 });
 
 interface CourseSubjectTableProps {
-  subjectCourseId: string;
-}
-
-interface FixedDataType {
-  key: React.Key;
-  name: string;
-  description: string;
+  subject_course_id: string;
 }
 
 interface CourseDataType {
   key: React.Key;
-  nameFullDegreeTh:string;
-  planCourse: string;
-  subjectCode: string;
-  nameSubjectThai: string;
-  nameSubjectEng: string;
-  subjectCategoryName: string;
-  subjectGroupName: string;
-  studyYear: number;
+  name_course_use: string;
+  plan_course: string;
+  subject_code: string;
+  name_subject_thai: string;
+  name_subject_eng: string;
+  subject_category_name: string;
+  subject_group_name: string;
+  study_year: number;
   term: number;
 }
 
-// เปลี่ยนชื่อ App เป็น CourseSubjectTable และรับ Prop ใหม่
-const CourseSubjectTable: React.FC<CourseSubjectTableProps> = ({ subjectCourseId }) => {
-  // ... (useStyle, States, และ Router ยังคงเหมือนเดิม)
-  // ...
-  const { styles } = useStyle();
-  const [dataSource, setDataSource] = useState<CourseDataType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [courseNameFilter, setCourseNameFilter] = useState<string>('all');
-  const [allData, setAllData] = useState<CourseDataType[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+const CourseSubjectTable: React.FC<CourseSubjectTableProps> = ({
+  subject_course_id,
+}) => {
+  const { styles } = use_style();
+  const [data_source, set_data_source] = useState<CourseDataType[]>([]);
+  const [loading, set_loading] = useState(true);
+  const [course_name_filter, set_course_name_filter] = useState<string>("all");
+  const [all_data, set_all_data] = useState<CourseDataType[]>([]);
+  const [search_term, set_search_term] = useState("");
   const router = useRouter();
 
-  // const handleViewDetails = (id: number) => {
-  //   // ไปที่หน้า details/ตาม id ที่ส่งมา
-  //   router.push(`/courses/details/${id}`);
-  // };
-
-  const handleDelete = (id: number) => {
+  const handle_delete = (id: number) => {
     Modal.confirm({
-      title: 'คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?',
-      okText: 'ยืนยัน',
-      cancelText: 'ยกเลิก',
+      title: "คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?",
+      okText: "ยืนยัน",
+      cancelText: "ยกเลิก",
       onOk: async () => {
         try {
-          // ส่ง request ไปยัง API เพื่อลบข้อมูล
           const response = await fetch(`/api/subjectCourse`, {
-            method: 'DELETE',
+            method: "DELETE",
             headers: {
-            'Content-Type': 'application/json',
-          },
-          // 3. ส่ง ID เข้าไปใน body ของ request
-          body: JSON.stringify({ id: id }),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ id }),
           });
 
           if (!response.ok) {
-            throw new Error('ไม่สามารถลบข้อมูลได้');
+            throw new Error("ไม่สามารถลบข้อมูลได้");
           }
 
-          // ลบข้อมูลใน State เพื่อให้ตารางอัปเดตทันที
-          setAllData(prevData => prevData.filter(item => item.key !== id));
-          message.success('ลบข้อมูลสำเร็จ');
-
+          set_all_data((prev) => prev.filter((item) => item.key !== id));
+          message.success("ลบข้อมูลสำเร็จ");
         } catch (error) {
           console.error(error);
-          message.error('เกิดข้อผิดพลาดในการลบข้อมูล');
+          message.error("เกิดข้อผิดพลาดในการลบข้อมูล");
         }
       },
     });
   };
 
-  const filterData = (data: CourseDataType[], term: string, nameFilter: string) => {
-    const lowerCaseTerm = term.toLowerCase().trim();
+  const filter_data = (
+    data: CourseDataType[],
+    term: string,
+    name_filter: string
+  ) => {
+    const lower_case_term = term.toLowerCase().trim();
+    let filtered_by_name = data;
 
-    let filteredByName = data;
-    // กรองตาม 'ชื่อหลักสูตร (ไทย)' ก่อน
-    if (nameFilter !== 'all') {
-      filteredByName = data.filter(item => item.nameFullDegreeTh === nameFilter);
+    if (name_filter !== "all") {
+      filtered_by_name = data.filter(
+        (item) => item.name_course_use === name_filter
+      );
     }
-    
-    if (!lowerCaseTerm) {
-      return filteredByName; 
+
+    if (!lower_case_term) {
+      return filtered_by_name;
     }
 
-    // กรองตามคำค้นหาในทุก Field (ตามเดิม)
-    return filteredByName.filter(item => {
-      const searchFields = [
-        item.nameFullDegreeTh,
-        item.planCourse,
-        item.subjectCode,
-        item.nameSubjectThai,
-        item.nameSubjectEng,
-        item.subjectCategoryName,
-        item.subjectGroupName,
-        item.studyYear.toString(), 
-        item.term.toString(),       
-      ].join('|').toLowerCase();
+    return filtered_by_name.filter((item) => {
+      const search_fields = [
+        item.name_course_use,
+        item.plan_course,
+        item.subject_code,
+        item.name_subject_thai,
+        item.name_subject_eng,
+        item.subject_category_name,
+        item.subject_group_name,
+        item.study_year.toString(),
+        item.term.toString(),
+      ]
+        .join("|")
+        .toLowerCase();
 
-      return searchFields.includes(lowerCaseTerm);
+      return search_fields.includes(lower_case_term);
     });
   };
 
-
-  const fixedColumns: TableColumnsType<CourseDataType> = [
-    { title: 'ชื่อหลักสูตร (ไทย)', dataIndex: 'nameFullDegreeTh', width: 50 },
-    { title: 'แผนการเรียน', dataIndex: 'planCourse', width: 60},
-    { title: 'รหัสรายวิชา', dataIndex: 'subjectCode', width: 50 },
-    { title: 'ชื่อวิชา (ไทย)', dataIndex: 'nameSubjectThai', width: 100 },
-    { title: 'ชื่อวิชา (อังกฤษ)', dataIndex: 'nameSubjectEng', width: 100 },
-    { title: 'หมวดหมู่วิชา', dataIndex: 'subjectCategoryName', width: 50 },
-    { title: 'กลุ่มสาระการเรียนรู้', dataIndex: 'subjectGroupName', width: 100 },
-    { title: 'ปีที่เรียน', dataIndex: 'studyYear', width: 35 },
-    { title: 'เทอมที่เรียน', dataIndex: 'term', width: 35 },
+  const fixed_columns: TableColumnsType<CourseDataType> = [
+    { title: "รหัสรายวิชา", dataIndex: "subject_code", width: 50 },
+    { title: "ชื่อวิชา (ไทย)", dataIndex: "name_subject_thai", width: 100 },
+    { title: "ชื่อวิชา (อังกฤษ)", dataIndex: "name_subject_eng", width: 100 },
+    { title: "หมวดหมู่วิชา", dataIndex: "subject_category_name", width: 50 },
+    { title: "ปีที่เรียน", dataIndex: "study_year", width: 35 },
+    { title: "เทอมที่เรียน", dataIndex: "term", width: 35 },
     {
-        title: 'การจัดการ',
-        key: 'action',
-        width: 100,
-        render: (text, record) => ( // record คือข้อมูลของแถวนั้นๆ
-          <Space size="middle">
-            {/* <Button onClick={() => handleViewDetails(record.key)}>
-              👁️ ดูรายละเอียด
-            </Button> */}
-            <Button type="primary" danger onClick={() => handleDelete(Number(record.key))}>
-              🗑️ ลบ
-            </Button>
-          </Space>
-        ),
-      },
+      title: "การจัดการ",
+      key: "action",
+      width: 100,
+      render: (text, record) => (
+        <Space size="middle">
+          <Button
+            type="primary"
+            danger
+            onClick={() => handle_delete(Number(record.key))}
+          >
+            🗑️ ลบ
+          </Button>
+        </Space>
+      ),
+    },
   ];
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetch_data = async () => {
       try {
-        setLoading(true);
-        const response = await fetch(`/api/subjectCourse?id=${subjectCourseId}`); // เรียก Endpoint เดิม
+        set_loading(true);
+        const response = await fetch(`/api/subjectCourse?id=${subject_course_id}`);
         const data = await response.json();
-        // ป้องกันกรณี API ส่ง object/error แทน array
+
         if (Array.isArray(data)) {
-          setAllData(data); // <<< 3. เก็บข้อมูลทั้งหมด
-          setDataSource(data); // <<< 4. แสดงข้อมูลทั้งหมดในครั้งแรก
+          set_all_data(data);
+          set_data_source(data);
         } else {
-          console.warn('Unexpected /api/subjectCourse payload:', data);
-          setAllData([]);
-          setDataSource([]);
+          console.warn("Unexpected /api/subjectCourse payload:", data);
+          set_all_data([]);
+          set_data_source([]);
         }
       } catch (error) {
-        console.error("Failed to fetch subjectCourse:", error);
-        setDataSource([]);
+        console.error("Failed to fetch subject_course:", error);
+        set_data_source([]);
       } finally {
-        setLoading(false);
+        set_loading(false);
       }
     };
 
-    fetchData();
-  }, [subjectCourseId]);
+    fetch_data();
+  }, [subject_course_id]);
 
-  // 2. ปรับ useEffect ให้ใช้ courseNameFilter
   useEffect(() => {
-    // ใช้ฟังก์ชัน filterData เพื่อรวมการกรองชื่อหลักสูตรและ Global Search
-    const finalFilteredData = filterData(allData, searchTerm, courseNameFilter);
-    setDataSource(finalFilteredData);
-  }, [courseNameFilter, allData, searchTerm]);
+    const final_filtered_data = filter_data(all_data, search_term, course_name_filter);
+    set_data_source(final_filtered_data);
+  }, [course_name_filter, all_data, search_term]);
 
-  // 3. สร้างฟังก์ชันเพื่อสร้าง Option สำหรับชื่อหลักสูตร
-  const getCourseNameOptions = () => {
-      // ดึงค่าชื่อหลักสูตรที่ไม่ซ้ำกันจากข้อมูลทั้งหมด
-      const names = Array.from(new Set(allData.map(item => item.nameFullDegreeTh))).sort();
-      
-      const options = names.map(name => ({
-          value: name,
-          label: name.length > 30 ? `${name.substring(0, 30)}...` : name, // ตัดข้อความยาวๆ เพื่อให้แสดงผลได้สวยงาม
-      }));
-      
-      // เพิ่มตัวเลือก "ทั้งหมด"
-      options.unshift({ value: 'all', label: 'ทั้งหมด' });
-      return options;
+  const get_course_name_options = () => {
+    const names = Array.from(new Set(all_data.map((item) => item.name_course_use))).sort();
+
+    const options = names.map((name) => ({
+      value: name,
+      label: name.length > 30 ? `${name.substring(0, 30)}...` : name,
+    }));
+
+    options.unshift({ value: "all", label: "ทั้งหมด" });
+    return options;
   };
 
   return (
     <Flex vertical gap="small">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1>Subject Course: { data_source[0]?.name_course_use} </h1>
+        <h2>แผนการเรียน: { data_source[0]?.plan_course} </h2>
         <Space>
-          {/* Component Filter ตามปี */}
-          <label>กรองตามชื่อหลักสูตร:</label>
+          {/* <label>กรองตามชื่อหลักสูตร:</label>
           <Select
-            value={courseNameFilter}
+            value={course_name_filter}
             style={{ width: 120 }}
-            onChange={setCourseNameFilter}
-            options={getCourseNameOptions()}
-            loading={loading && allData.length === 0}
-          />
-          {/* 4. Component Global Search */}
+            onChange={set_course_name_filter}
+            options={get_course_name_options()}
+            loading={loading && all_data.length === 0}
+          /> */}
           <Input.Search
             placeholder="ค้นหาทุก Field..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)} // อัปเดต searchTerm
+            value={search_term}
+            onChange={(e) => set_search_term(e.target.value)}
             style={{ width: 300 }}
             loading={loading}
           />
         </Space>
-        <Button type="primary" onClick={() => router.push(`/courses/details/${subjectCourseId}/new?initialId=${subjectCourseId}`)}>+ สร้าง Subject Course เพิ่ม</Button>
+        <Button
+          type="primary"
+          onClick={() =>
+            router.push(
+              `/courses/details/${subject_course_id}/new?initial_id=${subject_course_id}`
+            )
+          }
+        >
+          + สร้าง Subject Course เพิ่ม
+        </Button>
       </div>
       <Table<CourseDataType>
-        className={styles.customTable}
-        columns={fixedColumns}
-        dataSource={dataSource}
-        pagination={{ pageSize: 10 }} // เพิ่ม Pagination เพื่อความสวยงาม
-        scroll={{ x: 1750, y: 750 }} // ปรับ scroll x ให้กว้างขึ้น
+        className={styles.custom_table}
+        columns={fixed_columns}
+        dataSource={data_source}
+        pagination={{ 
+              pageSize: 10,
+              showSizeChanger: false,
+              hideOnSinglePage: false 
+            }}
         bordered
         loading={loading}
       />
