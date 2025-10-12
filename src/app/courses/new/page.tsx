@@ -207,7 +207,7 @@ export default function AddCoursePage() {
                     loading={loading}
                     showSearch
                     filterOption={(input, option) =>
-                      (option?.children as string)
+                      (option?.children as unknown as string)
                         ?.toLowerCase()
                         .indexOf(input.toLowerCase()) >= 0
                     }

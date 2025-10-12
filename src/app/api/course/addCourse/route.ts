@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import db from "../../../../../lib/db";
-import type { CourseData } from "@/types/course";
 
 export async function POST(req: Request) {
-  const data = (await req.json()) as CourseData;
+  const data = (await req.json());
 
   const conn = await db.getConnection();
   await conn.beginTransaction();
