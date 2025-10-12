@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '../../../../lib/db';
 export const runtime = 'nodejs';
-
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -16,11 +15,11 @@ export async function GET(req: NextRequest) {
               s.subject_id AS subjectId,
               s.subject_code AS subjectCode,
               s.name_subject_thai AS subjectNameTh,
-              cs.name_course_th AS subjectCourseNameTh,
+              cs.name_course_use AS subjectCourseNameTh,
               p.subject_id AS previousSubjectId,
               p.subject_code AS previousSubjectCode,
               p.name_subject_thai AS previousSubjectNameTh,
-              cp.name_course_th AS previousSubjectCourseNameTh
+              cp.name_course_use AS previousSubjectCourseNameTh
        FROM pre_subject ps
        JOIN subject s ON s.subject_id = ps.subject_id
        JOIN course cs ON cs.course_id = s.course_id
