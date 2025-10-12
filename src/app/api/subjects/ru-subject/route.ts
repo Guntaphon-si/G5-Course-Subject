@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '../../../../../lib/db'; // สมมติว่า path ไปยัง db connection ถูกต้อง
+import pool from '../../../../../lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 // GET - Read subjects
@@ -7,36 +7,44 @@ export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
     const q = searchParams.get('q') || '';
+    const courseId = searchParams.get('courseId') || '';
 
-    // ---- START: โค้ดที่แก้ไข ----
-    // แก้ไข: ใช้ชื่อคอลัมน์แบบ snake_case ให้ตรงกับฐานข้อมูล และใช้ AS เพื่อแปลงเป็น camelCase ในผลลัพธ์ JSON
     let query = `
       SELECT 
-        subject_id AS subjectId,
-        course_id AS courseId,
-        subject_type_id AS subjectTypeId,
-        subject_category_id AS subjectCategoryId,
-        sub_credit_id AS subCreditId,
-        subject_code AS subjectCode,
-        name_subject_thai AS nameSubjectThai,
-        name_subject_eng AS nameSubjectEng,
-        is_visible AS isVisible
-      FROM subject
+        s.subject_id AS subjectId,
+        s.course_id AS courseId,
+        s.subject_type_id AS subjectTypeId,
+        s.subject_category_id AS subjectCategoryId,
+        s.sub_credit_id AS subCreditId,
+        s.subject_code AS subjectCode,
+        s.name_subject_thai AS nameSubjectThai,
+        s.name_subject_eng AS nameSubjectEng,
+        s.is_visible AS isVisible,
+        c.name_course_use AS nameCourseUse,
+        sc.credit AS credit,
+        sc.lecture_hours AS lectureHours,
+        sc.lab_hours AS labHours,
+        sc.by_self_hours AS bySelfHours
+      FROM subject s
+      LEFT JOIN course c ON s.course_id = c.course_id
+      LEFT JOIN sub_credit sc ON s.sub_credit_id = sc.sub_credit_id
       WHERE 1=1
     `;
 
     const params: string[] = [];
 
     if (q) {
-      // แก้ไข: ใช้ชื่อคอลัมน์ที่ถูกต้องใน WHERE clause
-      query += ` AND (subject_code LIKE ? OR name_subject_thai LIKE ? OR name_subject_eng LIKE ?)`;
+      query += ` AND (s.subject_code LIKE ? OR s.name_subject_thai LIKE ? OR s.name_subject_eng LIKE ?)`;
       const searchTerm = `%${q}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
 
-    // แก้ไข: ใช้ชื่อคอลัมน์ที่ถูกต้องใน ORDER BY clause
-    query += ` ORDER BY subject_code ASC`;
-    // ---- END: โค้ดที่แก้ไข ----
+    if (courseId) {
+      query += ` AND s.course_id = ?`;
+      params.push(courseId);
+    }
+
+    query += ` ORDER BY s.subject_code ASC`;
 
     const [rows] = await pool.query<RowDataPacket[]>(query, params);
 
@@ -57,18 +65,14 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    
-    // ---- START: โค้ดที่แก้ไข ----
-    // แก้ไข: เปลี่ยน 'credit' เป็น 'subCreditId' เพื่อให้สอดคล้องกับฐานข้อมูล
     const { 
       subjectId, 
       subjectCode, 
       nameSubjectThai, 
       nameSubjectEng, 
-      subCreditId, // เปลี่ยนจาก credit
+      subCreditId,
       isVisible 
     } = body;
-    // ---- END: โค้ดที่แก้ไข ----
 
     // Validate required fields
     if (!subjectId) {
@@ -78,18 +82,13 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // ---- START: โค้ดที่แก้ไข ----
-    // แก้ไข: ตรวจสอบ 'subCreditId' แทน 'credit'
     if (!subjectCode || !nameSubjectThai || !nameSubjectEng || subCreditId === undefined || isVisible === undefined) {
-    // ---- END: โค้ดที่แก้ไข ----
       return NextResponse.json(
         { success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
         { status: 400 }
       );
     }
 
-    // ---- START: โค้ดที่แก้ไข ----
-    // แก้ไข: ใช้ชื่อคอลัมน์แบบ snake_case ให้ตรงกับฐานข้อมูล
     const query = `
       UPDATE subject 
       SET 
@@ -101,12 +100,10 @@ export async function PUT(req: NextRequest) {
       WHERE subject_id = ?
     `;
 
-    // แก้ไข: ส่ง 'subCreditId' เป็นพารามิเตอร์
     const [result] = await pool.query<ResultSetHeader>(
       query, 
       [subjectCode, nameSubjectThai, nameSubjectEng, subCreditId, isVisible, subjectId]
     );
-    // ---- END: โค้ดที่แก้ไข ----
 
     if (result.affectedRows === 0) {
       return NextResponse.json(
