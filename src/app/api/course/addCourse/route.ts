@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import db from "../../../../../lib/db";
 
 // Helper function to create subject category
-async function createSubjectCategory(conn: any, courseId: number, categoryName: string, categoryLevel: number, masterCategory: number | null) {
+async function createSubjectCategory(
+  conn: any,
+  courseId: number,
+  categoryName: string,
+  categoryLevel: number,
+  masterCategory: number | null
+) {
   const [result]: any = await conn.query(
     `INSERT INTO subject_category (course_id, category_name, category_level, master_category) 
      VALUES (?, ?, ?, ?)`,
@@ -20,17 +26,98 @@ interface CourseData {
   name_initials_degree_th?: string;
   name_initials_degree_eng?: string;
   department_id: number;
-  selected_categories?: number[];
+  selected_categories?: string[];
 }
 
+// Mapping ของ category จากชื่อใน checkbox เป็นข้อมูลในฐานข้อมูล
+const categoryMapping: {
+  [key: string]: { level: number; name: string; master?: string };
+} = {
+  // Level 1 - หมวดหลัก
+  general_education: { level: 1, name: "หมวดวิชาศึกษาทั่วไป" },
+  specific_subject: { level: 1, name: "หมวดวิชาเฉพาะ" },
+  free_elective: { level: 1, name: "หมวดวิชาเลือกเสรี" },
+
+  // Level 2 - กลุ่มสาระของหมวดศึกษาทั่วไป
+  happy_subject: {
+    level: 2,
+    name: "กลุ่มสาระอยู่ดีมีสุข",
+    master: "general_education",
+  },
+  entrepreneurship_subject: {
+    level: 2,
+    name: "กลุ่มสาระศาสตร์แห่งผู้ประกอบการ",
+    master: "general_education",
+  },
+  language_subject: {
+    level: 2,
+    name: "กลุ่มสาระภาษากับการสื่อสาร",
+    master: "general_education",
+  },
+  people_subject: {
+    level: 2,
+    name: "กลุ่มสาระพลเมืองไทยและพลเมืองโลก",
+    master: "general_education",
+  },
+  aesthetics_subject: {
+    level: 2,
+    name: "กลุ่มสาระสุนทรียศาสตร์",
+    master: "general_education",
+  },
+
+  // Level 2 - กลุ่มของหมวดวิชาเฉพาะ
+  core_subject: { level: 2, name: "วิชาแกน", master: "specific_subject" },
+  specialized_subject: {
+    level: 2,
+    name: "วิชาเฉพาะด้าน",
+    master: "specific_subject",
+  },
+  elective_subject: { level: 2, name: "วิชาเลือก", master: "specific_subject" },
+
+  // Level 3 - กลุ่มย่อยของวิชาเฉพาะด้าน
+  hardware_architecture: {
+    level: 3,
+    name: "กลุ่มฮาร์ดแวร์และสถาปัตยกรรมคอมพิวเตอร์",
+    master: "specialized_subject",
+  },
+  system_infrastructure: {
+    level: 3,
+    name: "กลุ่มโครงสร้างพื้นฐานของระบบ",
+    master: "specialized_subject",
+  },
+  software_technology: {
+    level: 3,
+    name: "กลุ่มเทคโนโลยีและวิธีการทางซอฟต์แวร์",
+    master: "specialized_subject",
+  },
+  applied_technology: {
+    level: 3,
+    name: "กลุ่มเทคโนโลยีเพื่องานประยุกต์",
+    master: "specialized_subject",
+  },
+  independent_study: {
+    level: 3,
+    name: "กลุ่มการค้นคว้าอิสระ",
+    master: "specialized_subject",
+  },
+};
+
 export async function POST(req: Request) {
-  const data = (await req.json());
+  const data: CourseData = await req.json();
 
   const conn = await db.getConnection();
   await conn.beginTransaction();
 
   try {
-    // Insert into course table only
+    // Validate required fields
+    if (!data.name_course_th || !data.department_id) {
+      return NextResponse.json(
+        { message: "กรุณากรอกข้อมูลที่จำเป็น (ชื่อหลักสูตรและคณะ)" },
+        { status: 400 }
+      );
+    }
+
+    // Insert into course table
     const [courseResult]: any = await conn.query(
       `INSERT INTO course 
       (name_course_th, name_course_use, name_course_eng,
@@ -48,159 +135,81 @@ export async function POST(req: Request) {
         data.department_id,
       ]
     );
+
     console.log("Inserted course with ID:", courseResult.insertId);
     const courseId = courseResult.insertId;
 
-    // 3. สร้างโครงสร้างหลักสูตรในตาราง subject_category (ถ้ามีการเลือกหมวดวิชา)
-    if (data.selected_categories && data.selected_categories.length > 0) {
-      // สร้างตาราง course_subject_category ถ้ายังไม่มี
-    //   await conn.query(`
-    //     CREATE TABLE IF NOT EXISTS course_subject_category (
-    //       id INT AUTO_INCREMENT PRIMARY KEY,
-    //       course_id INT,
-    //       subject_category_id INT,
-    //       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    //       FOREIGN KEY (course_id) REFERENCES course(course_id),
-    //       FOREIGN KEY (subject_category_id) REFERENCES subject_category(subject_category_id)
-    //     )
-    //   `);
+    // สร้างโครงสร้างหลักสูตรในตาราง subject_category (ถ้ามีการเลือกหมวดวิชา)
+    if (
+      data.selected_categories &&
+      Array.isArray(data.selected_categories) &&
+      data.selected_categories.length > 0
+    ) {
+      const selectedCategories = data.selected_categories;
 
-      // สร้างโครงสร้างหลักสูตรตามลำดับชั้น
-      let generalEducationId = null;
-      let specificSubjectId = null;
-      let freeElectiveId = null;
-      let specializedSubjectId = null;
+      // เก็บ mapping ของ category_id ที่สร้างขึ้นมา
+      const categoryIdMap: { [key: string]: number } = {};
 
-      // Level 1: สร้างหมวดวิชาหลัก
-      for (const categoryId of data.selected_categories) {
-        let categoryName = '';
-        let categoryLevel = 1;
-        let masterCategory = null;
+      // แยก categories ตาม level เพื่อ insert ตามลำดับ
+      const level1Categories = selectedCategories.filter(
+        (cat) => categoryMapping[cat]?.level === 1
+      );
+      const level2Categories = selectedCategories.filter(
+        (cat) => categoryMapping[cat]?.level === 2
+      );
+      const level3Categories = selectedCategories.filter(
+        (cat) => categoryMapping[cat]?.level === 3
+      );
 
-        switch (categoryId) {
-          case 1: // หมวดวิชาศึกษาทั่วไป
-            categoryName = 'หมวดวิชาศึกษาทั่วไป';
-            generalEducationId = await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            break;
-          case 2: // หมวดวิชาเฉพาะ
-            categoryName = 'หมวดวิชาเฉพาะ';
-            specificSubjectId = await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            break;
-          case 3: // หมวดวิชาเลือกเสรี
-            categoryName = 'หมวดวิชาเลือกเสรี';
-            freeElectiveId = await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            break;
+      // Insert Level 1
+      for (const categoryKey of level1Categories) {
+        const categoryInfo = categoryMapping[categoryKey];
+        if (categoryInfo) {
+          const categoryId = await createSubjectCategory(
+            conn,
+            courseId,
+            categoryInfo.name,
+            categoryInfo.level,
+            null
+          );
+          categoryIdMap[categoryKey] = categoryId;
         }
       }
 
-      // Level 2: สร้างหมวดวิชาย่อย
-      for (const categoryId of data.selected_categories) {
-        let categoryName = '';
-        let categoryLevel = 2;
-        let masterCategory = null;
+      // Insert Level 2
+      for (const categoryKey of level2Categories) {
+        const categoryInfo = categoryMapping[categoryKey];
+        if (categoryInfo && categoryInfo.master) {
+          const masterCategoryId = categoryIdMap[categoryInfo.master];
 
-        switch (categoryId) {
-          case 4: // กลุ่มสาระอยู่ดีมีสุข
-            if (generalEducationId) {
-              categoryName = 'กลุ่มสาระอยู่ดีมีสุข';
-              masterCategory = generalEducationId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 5: // กลุ่มสาระศาสตร์แห่งผู้ประกอบการ
-            if (generalEducationId) {
-              categoryName = 'กลุ่มสาระศาสตร์แห่งผู้ประกอบการ';
-              masterCategory = generalEducationId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 6: // กลุ่มสาระภาษากับการสื่อสาร
-            if (generalEducationId) {
-              categoryName = 'กลุ่มสาระภาษากับการสื่อสาร';
-              masterCategory = generalEducationId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 7: // กลุ่มสาระพลเมืองไทยและพลเมืองโลก
-            if (generalEducationId) {
-              categoryName = 'กลุ่มสาระพลเมืองไทยและพลเมืองโลก';
-              masterCategory = generalEducationId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 8: // กลุ่มสาระสุนทรียศาสตร์
-            if (generalEducationId) {
-              categoryName = 'กลุ่มสาระสุนทรียศาสตร์';
-              masterCategory = generalEducationId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 9: // วิชาแกน
-            if (specificSubjectId) {
-              categoryName = 'วิชาแกน';
-              masterCategory = specificSubjectId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 10: // วิชาเฉพาะด้าน
-            if (specificSubjectId) {
-              categoryName = 'วิชาเฉพาะด้าน';
-              masterCategory = specificSubjectId;
-              specializedSubjectId = await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 11: // วิชาเลือก
-            if (specificSubjectId) {
-              categoryName = 'วิชาเลือก';
-              masterCategory = specificSubjectId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
+          if (masterCategoryId) {
+            const categoryId = await createSubjectCategory(
+              conn,
+              courseId,
+              categoryInfo.name,
+              categoryInfo.level,
+              masterCategoryId
+            );
+            categoryIdMap[categoryKey] = categoryId;
+          }
         }
       }
 
-      // Level 3: สร้างหมวดวิชาละเอียด
-      for (const categoryId of data.selected_categories) {
-        let categoryName = '';
-        let categoryLevel = 3;
-        let masterCategory = null;
+      // Insert Level 3
+      for (const categoryKey of level3Categories) {
+        const categoryInfo = categoryMapping[categoryKey];
+        if (categoryInfo && categoryInfo.master) {
+          const masterCategoryId = categoryIdMap[categoryInfo.master];
 
-        switch (categoryId) {
-          case 12: // กลุ่มฮาร์ดแวร์และสถาปัตยกรรมคอมพิวเตอร์
-            if (specializedSubjectId) {
-              categoryName = 'กลุ่มฮาร์ดแวร์และสถาปัตยกรรมคอมพิวเตอร์';
-              masterCategory = specializedSubjectId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 13: // กลุ่มโครงสร้างพื้นฐานของระบบ
-            if (specializedSubjectId) {
-              categoryName = 'กลุ่มโครงสร้างพื้นฐานของระบบ';
-              masterCategory = specializedSubjectId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 14: // กลุ่มเทคโนโลยีและวิธีการทางซอฟต์แวร์
-            if (specializedSubjectId) {
-              categoryName = 'กลุ่มเทคโนโลยีและวิธีการทางซอฟต์แวร์';
-              masterCategory = specializedSubjectId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 15: // กลุ่มเทคโนโลยีเพื่องานประยุกต์
-            if (specializedSubjectId) {
-              categoryName = 'กลุ่มเทคโนโลยีเพื่องานประยุกต์';
-              masterCategory = specializedSubjectId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
-          case 16: // กลุ่มการค้นคว้าอิสระ
-            if (specializedSubjectId) {
-              categoryName = 'กลุ่มการค้นคว้าอิสระ';
-              masterCategory = specializedSubjectId;
-              await createSubjectCategory(conn, courseId, categoryName, categoryLevel, masterCategory);
-            }
-            break;
+          if (masterCategoryId) {
+            await createSubjectCategory(
+              conn,
+              courseId,
+              categoryInfo.name,
+              categoryInfo.level,
+              masterCategoryId
+            );
+          }
         }
       }
     }

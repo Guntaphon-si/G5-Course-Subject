@@ -69,7 +69,7 @@ export default function AddCoursePlanPage() {
   useEffect(() => {
     async function fetchCourses() {
       try {
-        const res = await fetch('/api/coursePlan/CourseDropDown'); 
+        const res = await fetch('/api/coursePlan/courseDropDown'); 
         const data = await res.json();
         setCourses(data.items || []);
       } catch (error) {
