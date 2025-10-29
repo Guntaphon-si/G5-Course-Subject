@@ -271,7 +271,7 @@ export default function PreSubjectPage() {
                     }}>แก้ไข</Button>
                     <Popconfirm title="ยืนยันการลบความสัมพันธ์นี้?" okText="ลบ" cancelText="ยกเลิก" onConfirm={async () => {
                       try {
-                        const res = await fetch(`/api/pre-subject?id=${record.preSubjectId}`, { method: 'DELETE' });
+                        const res = await fetch(`/api/pre-subject?subjectId=${record.subjectId}&previousSubjectId=${record.previousSubjectId}`, { method: 'DELETE' });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.message || 'ลบไม่สำเร็จ');
                         antdMessage.success('ลบสำเร็จ');
@@ -300,7 +300,8 @@ export default function PreSubjectPage() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  preSubjectId: editingRow.preSubjectId,
+                  originalSubjectId: editingRow.subjectId,
+                  originalPreviousSubjectId: editingRow.previousSubjectId,
                   subjectId: editMainSelectedId,
                   previousSubjectId: editSelectedId,
                 }),
@@ -321,7 +322,7 @@ export default function PreSubjectPage() {
             <AutoComplete
               options={toOptions(editMainOptions)}
               value={editMainQ || editMainSelectedLabel}
-              onChange={(v) => { setEditMainQ(v); setEditMainSelectedLabel(''); setEditMainSelectedId(null); }}
+              onChange={(v) => { setEditMainQ(v); }}
               onSelect={(val, option) => {
                 setEditMainSelectedId(Number(val));
                 const label = typeof option?.label === 'string' ? option.label : String(option?.label ?? '');
@@ -337,7 +338,7 @@ export default function PreSubjectPage() {
             <AutoComplete
               options={toOptions(editOptions)}
               value={editQ || editSelectedLabel}
-              onChange={(v) => { setEditQ(v); setEditSelectedLabel(''); setEditSelectedId(null); }}
+              onChange={(v) => { setEditQ(v); }}
               onSelect={(val, option) => {
                 setEditSelectedId(Number(val));
                 const label = typeof option?.label === 'string' ? option.label : String(option?.label ?? '');
