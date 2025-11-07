@@ -45,22 +45,30 @@ export interface Category {
   level: number;
 }
 
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0,
+        v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 // --- โครงสร้างหมวดหมู่เริ่มต้น (เป็นตัวอย่าง) ---
 const initialCategories: Category[] = [
   {
-    key: crypto.randomUUID(),
+    key: generateUUID(),
     name: 'หมวดวิชาศึกษาทั่วไป',
     level: 1,
     children: []
   },
   {
-    key: crypto.randomUUID(),
+    key: generateUUID(),
     name: 'หมวดวิชาเฉพาะ',
     level: 1,
     children: []
   },
   {
-    key: crypto.randomUUID(),
+    key: generateUUID(),
     name: 'หมวดวิชาเลือกเสรี',
     level: 1,
     children: []
